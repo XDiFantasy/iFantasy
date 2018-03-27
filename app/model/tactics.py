@@ -8,7 +8,7 @@ class Strategy(db.Modle):
     pg_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
     sf_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
     pf_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
-    c_id =db.Column(db,Integer, db.ForeignKey('attr_ch.id'))
+    c_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
     v_sg_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
     v_pg_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
     v_sf_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
