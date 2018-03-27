@@ -12,7 +12,7 @@ def create_app(config_name):
     app.config.from_object(config[config_name])
 
     db.init_app(app)
-    from app.controller import user_bp, bag_bp, game_bp, \
+    from .controller import user_bp, bag_bp, game_bp, \
         tactics_bp, team_bp, activity_bp, chat_bp,recruit_bp
     app.register_blueprint(user_bp, url_prefix='/api/v1/user')
     app.register_blueprint(game_bp, url_prefix="/api/v1/game")
