@@ -10,7 +10,6 @@ api_version = 'v1'
 def create_app(config_name):
     app = Flask(__name__)
     app.config.from_object(config[config_name])
-    config[config_name].init_app(app)
 
     db.init_app(app)
     from app.controller import user_bp, bag_bp, game_bp, \
@@ -23,3 +22,5 @@ def create_app(config_name):
     app.register_blueprint(activity_bp, url_prefix="/api/v1/activity")
     app.register_blueprint(chat_bp, url_prefix="/api/v1/chat")
     app.register_blueprint(recruit_bp, url_prefix="recruit")
+
+    return app

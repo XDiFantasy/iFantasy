@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify
 from flask_restful import Api, Resource, reqparse
 from .utils import MobSMS
-from config import sms_key
+from ..config import sms_key
 
 user_bp = Blueprint("user_bp",__name__)
 user_api = Api(user_bp)

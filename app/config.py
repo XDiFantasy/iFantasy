@@ -7,7 +7,7 @@ WRITE_DATABASE = BASE.format(251)
 
 class Config:
     SECRET_KEY = "miyao"
-    SQLALCHEMY_DATABASE_URI = WRITE_DATABASE
+    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:zwk19950102@localhost:3306/nba" #WRITE_DATABASE
 
 class DeveploeConfig(Config):
     DEBUG = True
