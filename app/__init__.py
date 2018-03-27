@@ -21,6 +21,6 @@ def create_app(config_name):
     app.register_blueprint(team_bp, url_prefix="/api/v1/team")
     app.register_blueprint(activity_bp, url_prefix="/api/v1/activity")
     app.register_blueprint(chat_bp, url_prefix="/api/v1/chat")
-    app.register_blueprint(recruit_bp, url_prefix="recruit")
+    app.register_blueprint(recruit_bp, url_prefix="/api/v1/recruit")
 
     return app
