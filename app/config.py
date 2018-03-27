@@ -6,13 +6,15 @@ READ_DATABASE = BASE.format(250)
 WRITE_DATABASE = BASE.format(251)
 
 class Config:
-    pass
+    SECRET_KEY = "miyao"
+    SQLALCHEMY_DATABASE_URI = WRITE_DATABASE
 
 class DeveploeConfig(Config):
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://team1:12345qwert@192.168.0.251:3306/'
+    DEBUG = True
+    
 
 class ReleaseConfig(Config):
-    pass
+    DEBUG=False
 
 config = {
     'develop':DeveploeConfig,
