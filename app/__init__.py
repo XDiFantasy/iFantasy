@@ -1,11 +1,12 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from .config import config
 
+from .config import config
 
 db = SQLAlchemy()
 
 api_version = 'v1'
+
 
 def create_app(config_name):
     app = Flask(__name__)
@@ -13,7 +14,7 @@ def create_app(config_name):
 
     db.init_app(app)
     from .controller import user_bp, bag_bp, game_bp, \
-        tactics_bp, team_bp, activity_bp, chat_bp,recruit_bp
+        tactics_bp, team_bp, activity_bp, chat_bp, recruit_bp
     app.register_blueprint(user_bp, url_prefix='/api/v1/user')
     app.register_blueprint(game_bp, url_prefix="/api/v1/game")
     app.register_blueprint(bag_bp, url_prefix="/api/v1/bag")
