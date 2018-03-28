@@ -30,10 +30,10 @@ class LineUp(db.Model):
     pg = db.Column(db.Integer, db.ForeignKey('bag_player.id'))
     strategy_id = db.Column(db.Integer, db.ForeignKey('strategy.id'))
 
-    user = db.relationship('User', backref='lineup', lazy='dynamic')
-    team_info = db.relationship('TeamInfo', backref='lineup', lazy='dynamic')
-    bag_player = db.relationship('BagPlayer', backref='lineup', lazy='dynamic')
-    strategy = db.relationship('Strategy', backref='lineup', lazy='dynamic')
+    user = db.relationship('User', backref='lineup' )
+    team_info = db.relationship('TeamInfo', backref='lineup' )
+
+    strategy = db.relationship('Strategy', backref='lineup')
 
     def __init__(self, user_id, team_id, pf, c, sf, sg, pg, strategy_id):
         self.user_id, self.team_id, self.pf, self.c, self.sf, self.sg, self.pg, self.strategy_id = (

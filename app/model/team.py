@@ -23,8 +23,8 @@ class PlayerBase(db.Model):
     price = db.Column(db.Integer)
     score = db.Column(db.Integer)
     
-    season = db.relationship('SeasonData',backref='playerbase',lazy='dynamic')
-    team = db.relationship("TeamInfo",backref='playerbase',lazy='dynamic')
+    season = db.relationship('SeasonData',backref='playerbase')
+    team = db.relationship("TeamInfo",backref='playerbase')
     
     def __init__(self, name, birthday, country, height, wieght, armspan,
                  reach_height, draft, contract, season_id,team_id,cloth_num,pos1,pos2,price,score):

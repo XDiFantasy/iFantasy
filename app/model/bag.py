@@ -12,9 +12,9 @@ class BagPlayer(db.Model):
     input_data_id = db.Column(db.Integer, db.ForeignKey('input_data.id'))
     duedate = db.Column(db.DateTime)
 
-    user = db.relationship('User', backref='bagplayer', lazy='dynamic')
-    player = db.relationship('PlayerBase', backref='bagplayer', lazy='dynamic')
-    input_data = db.relationship('InputData', backref='bagplayer', lazy='dynamic')
+    user = db.relationship('User', backref='bagplayer')
+    player = db.relationship('PlayerBase', backref='bagplayer')
+    input_data = db.relationship('InputData', backref='bagplayer')
 
     def __init__(self, user_id, player_id, score, salary, input_data_id, duedate):
         self.user_id, self.palyer_id, self.score, self.salary, self.input_data_id, self.duedate = (
@@ -44,8 +44,8 @@ class BagEquip(db.Model):
 
     num = db.Column(db.Integer)
 
-    user = db.relationship("User", backref='bagequip', lazy="dynamic")
-    equip = db.relationship("Equip", backref='bagequip', lazy='dynamic')
+    user = db.relationship("User", backref='bagequip')
+    equip = db.relationship("Equip", backref='bagequip')
 
     def __init__(self, user_id, equip_id):
         self.user_id, self.equip_id = (user_id, equip_id)
@@ -60,7 +60,7 @@ class Equip(db.Model):
     name = db.Column(db.String(45))
     attr_ch_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
 
-    attr_ch = db.relationship('AttrCh', backref="equip", lazy='dynamic')
+    attr_ch = db.relationship('AttrCh', backref="equip")
 
     def __init__(self, name, attr_ch_id):
         self.name, self.attr_ch_id = (name, attr_ch_id)
@@ -78,8 +78,8 @@ class BagPiece(db.Model):
     piece_id = db.Column(db.Integer, db.ForeignKey("piece.id"))
     num = db.Column(db.Integer)
 
-    user = db.relationship('User', backref='bagpiece', lazy='dynamic')
-    piece = db.relationship('Piece', backref='bagpiece', lazy='dynamic')
+    user = db.relationship('User', backref='bagpiece')
+    piece = db.relationship('Piece', backref='bagpiece')
 
     def __init__(self, user_id, piece_id, num):
         self.user_id, self.piece_id, self.num = (
@@ -96,7 +96,7 @@ class Piece(db.Model):
     player_id = db.Column(db.Integer, db.ForeignKey('player_base.id'))
     total_num = db.Column(db.Integer)
 
-    player = db.relationship('PlayerBase', backref='piece', lazy='dynamic')
+    player = db.relationship('PlayerBase', backref='piece')
 
     def __init__(self, player_id, total_num):
         self.player_id, self.total_num = (player_id, total_num)
@@ -111,7 +111,7 @@ class BagProp(db.Model):
     fund_card_num = db.Column(db.Integer)
     exp_card_num = db.Column(db.Integer)
 
-    user = db.relationship('User', backref='bagprop', lazy='dynamic')
+    user = db.relationship('User', backref='bagprop')
 
     def __init__(self, user_id, fund_card_num, exp_card_num):
         self.user_id, self.fund_card_num, self.exp_card_num = (
@@ -132,8 +132,8 @@ class BagTrailCard(db.Model):
     num = db.Column(db.Integer)
     time = db.Column(db.Integer)
 
-    user = db.relationship('User', backref='bagtrailcard', lazy='dynamic')
-    player = db.relationship('PlayerBase', backref='bagtrailcard', lazy='dynamic')
+    user = db.relationship('User', backref='bagtrailcard')
+    player = db.relationship('PlayerBase', backref='bagtrailcard')
 
     def __init__(self, user_id, palyer_id, num, time):
         self.user_id, self.player_id, self.num, self.time = (
@@ -150,7 +150,7 @@ class PropUsing(db.Model):
     prop_type = db.Column(db.Integer)
     duetime = db.Column(db.DateTime)
 
-    user = db.relationship('User', backref='propusing', lazy='dynamic')
+    user = db.relationship('User', backref='propusing')
 
     def __init__(self, user_id, prop_type, duetime):
         self.user_id, self.prop_type, self.duetime = (
