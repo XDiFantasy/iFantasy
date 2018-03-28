@@ -48,7 +48,7 @@ class Vip(db.Model):
     __tablename__ = "vip"
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
     level = db.Column(db.Integer)
-    active = db.Column(db.SmallInteger)
+    active = db.Column(db.Boolean)
     duedate = db.Column(db.DateTime)
 
     user = db.relationship('User', backref='vip', lazy='dynamic')
