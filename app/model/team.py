@@ -1,7 +1,7 @@
 
 from app import db
 
-# 球员基本信息
+
 class PlayerBase(db.Model):
     __tablename__ = 'player_base'
 
@@ -28,15 +28,15 @@ class PlayerBase(db.Model):
     
     def __init__(self, name, birthday, country, height, wieght, armspan,
                  reach_height, draft, contract, season_id,team_id,cloth_num,pos1,pos2,price,score):
-        (self.name, self.birthday, self.country, self.height, self.wieght, self.armspan, self.reach_height, self.draft,
-         self.contract, self.season_data_id, self.team_id, self.cloth_num, self.pos1, self.pos2,self.price, self.score )=
-        (name, birthday, country, height, wieght, armspan,
-        reach_height, draft, contract, season_id,team_id,cloth_num,pos1,pos2,price,score)
+        (self.name, self.birthday, self.country, self.height, self.wieght, self.armspan, 
+        self.reach_height, self.draft,self.contract, self.season_data_id, self.team_id, 
+        self.cloth_num, self.pos1, self.pos2,self.price, self.score ) =(name, birthday, country, 
+        height, wieght, armspan,reach_height, draft, contract, season_id,
+        team_id,cloth_num,pos1,pos2,price,score)
     def __repr__(self):
         return "<PlayerBase %r>" % self.id
 
 
-# 球队信息
 class TeamInfo(db.Model):
     __tablename__ = 'team_info'
 

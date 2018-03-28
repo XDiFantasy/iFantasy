@@ -1,3 +1,5 @@
+from app import db
+
 class Friend(db.Model):
     __tablename__ = "friend"
     __table_args__ = (
