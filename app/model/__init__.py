@@ -3,5 +3,5 @@ from .bag import BagEquip, BagPiece, BagPlayer, BagProp, PropUsing, InputData,Eq
 from .chat import Friend
 from .game import GameHistory, UserGame
 from .tactics import Strategy, AttrCh
-from .team import PlayerBase,TeamInfo
+from .team import PlayerBase,TeamInfo, SeasonData
 from .user import User, LineUp

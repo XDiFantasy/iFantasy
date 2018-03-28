@@ -1,7 +1,7 @@
 from app import db
 
 
-class Strategy(db.Modle):
+class Strategy(db.Model):
     __tablename__ = "strategy"
 
     id = db.Column(db.Integer, primary_key=True)

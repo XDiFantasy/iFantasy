@@ -50,3 +50,14 @@ class TeamInfo(db.Model):
             name, city, intro)
     def __repr__(self):
         return "<TeamInfo %r>" % self.id
+
+class SeasonData(db.Model):
+    __tablename__ = 'season_data'
+    id = id = db.Column(db.Integer,primary_key=True)
+    season = db.Column(db.String(15))
+    is_regular = db.Column(db.Boolean)
+
+    def __init__(self, season, is_regular):
+        self.season, self.is_regular = (season, is_regular)
+    def __repr__(self):
+        return "<SeasonData %r>" %self.id
