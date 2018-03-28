@@ -1,10 +1,6 @@
 .vscode/
 venv/
 __pycache__/
-<<<<<<< HEAD
-.idea
-.git
-=======
 .idea/
 config.py
->>>>>>> bc0f0dbc66bc3d5adf6f1a4ef53a37e6f6516bff
+migrations/
