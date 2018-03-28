@@ -37,7 +37,7 @@ class Vip(db.Model):
     active = db.Column(db.Boolean, nullable=True, default=0)
     duedate = db.Column(db.DateTime, nullable=True)
     
-    user = db.relationship('User',backref='vip',lazy='dynamic')
+    user = db.relationship('User',backref='vip')
 
     def __init__(self, user_id, level, active, duedate):
         self.user_id = user_id
@@ -71,8 +71,8 @@ class Fund(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     fund_type_id = db.Column(db.Integer, db.ForeignKey('fund_type.id'))
     
-    user  = db.relationship('User',backref='fund',lazy='dynamic')
-    fund_type = db.relationship('FundType', backref='fund', lazy='dynamic')
+    user  = db.relationship('User',backref='fund')
+    fund_type = db.relationship('FundType', backref='fund')
 
     def __init__(self, user_id, fund_type_id):
         self.user_id = user_id
