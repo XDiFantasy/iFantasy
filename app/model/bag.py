@@ -17,7 +17,7 @@ class BagPlayer(db.Model):
     input_data = db.relationship('InputData', backref='bagplayer', lazy='dynamic')
 
     def __init__(self, user_id, player_id, score, salary, input_data_id, duedate):
-        self.user_id, self.palyer_id, self.score, self.salary, self.input_data_id, deudate = (
+        self.user_id, self.palyer_id, self.score, self.salary, self.input_data_id, self.deudate = (
             user_id, player_id, score, salary, input_data_id, duedate
         )
 
