@@ -8,7 +8,6 @@ class Friend(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     friend_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
-    user = db.relationship('User', backref='friend', lazy='dynamic')
 
     def __init__(self, user_id, friend_id):
         self.user_id, self.friend_id = (

@@ -22,9 +22,9 @@ class UserGame(db.Model):
     user_id = db.Column("user_id", db.ForeignKey('user.id'))
     game_history_id = db.Column("game_history_id", db.ForeignKey('game_history.id'))
 
-    user = db.relationship('User', backref='usergame', lazy='dynamic')
+    user = db.relationship('User', backref='usergame')
 
-    game_history = db.relationship('GameHistory', backref='usergame', lazy='dynamic')
+    game_history = db.relationship('GameHistory', backref='usergame')
 
     def __init__(self, user_id, game_history_id):
         self.user_id = user_id

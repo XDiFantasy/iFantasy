@@ -15,7 +15,7 @@ class PlayerBase(db.Model):
     reach_height = db.Column(db.Float)
     draft = db.Column(db.String(255))
     contract = db.Column(db.String(255))
-    season_data_id = db.Column(db.Integer, db.ForeignKey('season_data.id'))
+    #season_data_id = db.Column(db.Integer, db.ForeignKey('season_data.id'))
     team_id = db.Column(db.Integer, db.ForeignKey("team_info.id"))
     cloth_num = db.Column(db.Integer)
     pos1 = db.Column(db.String(2))
@@ -23,15 +23,15 @@ class PlayerBase(db.Model):
     price = db.Column(db.Integer)
     score = db.Column(db.Integer)
     
-    season = db.relationship('SeasonData',backref='playerbase',lazy='dynamic')
-    team = db.relationship("TeamInfo",backref='playerbase',lazy='dynamic')
+    season = db.relationship('SeasonData',backref='playerbase')
+    team = db.relationship("TeamInfo",backref='playerbase')
     
     def __init__(self, name, birthday, country, height, wieght, armspan,
-                 reach_height, draft, contract, season_id,team_id,cloth_num,pos1,pos2,price,score):
+                 reach_height, draft, contract,team_id,cloth_num,pos1,pos2,price,score):
         (self.name, self.birthday, self.country, self.height, self.wieght, self.armspan, 
-        self.reach_height, self.draft,self.contract, self.season_data_id, self.team_id, 
+        self.reach_height, self.draft,self.contract, self.team_id, 
         self.cloth_num, self.pos1, self.pos2,self.price, self.score ) =(name, birthday, country, 
-        height, wieght, armspan,reach_height, draft, contract, season_id,
+        height, wieght, armspan,reach_height, draft, contract,
         team_id,cloth_num,pos1,pos2,price,score)
     def __repr__(self):
         return "<PlayerBase %r>" % self.id
@@ -56,6 +56,8 @@ class SeasonData(db.Model):
     id = id = db.Column(db.Integer,primary_key=True)
     season = db.Column(db.String(15))
     is_regular = db.Column(db.Boolean)
+    player_id = db.Column(db.Integer, db.ForeignKey('player_base.id'))
+    player = db.relationship('PlayerBase', backref='seasondata')
 
     def __init__(self, season, is_regular):
         self.season, self.is_regular = (season, is_regular)
