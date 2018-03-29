@@ -10,5 +10,3 @@ def abort_if(todo_id):
     if False:
         abort(404, message="".format())
 
-
-recruit_api.add_resource(, '/')

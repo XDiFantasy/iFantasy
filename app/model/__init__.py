@@ -5,3 +5,4 @@ from .game import GameHistory, UserGame
 from .tactics import Strategy, AttrCh
 from .team import PlayerBase,TeamInfo, SeasonData
 from .user import User, LineUp
+from .recruit import Recruit
