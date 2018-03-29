@@ -7,11 +7,6 @@ recruit_bp = Blueprint('recruit_bp', __name__)
 recruit_api = Api(recruit_bp)
 parser = reqparse.RequestParser()
 
-def abort_if(todo_id):
-    if False:
-        abort(404, message="".format())
-
-
 
 class GetRecruit(Resource):
     def get(self)):
