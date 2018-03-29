@@ -6,7 +6,7 @@ class Recruit(db.Model):
 
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
     num = db.Column(db.Integer, default=0)
-    time = db.Column(db.Dateime)
+    time = db.Column(db.DateTime)
 
     def __init__(self,user_id,num,time):
         self.user_id = user_id
