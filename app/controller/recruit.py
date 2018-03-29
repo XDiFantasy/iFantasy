@@ -8,6 +8,9 @@ recruit_api = Api(recruit_bp)
 
 class hello(Resource):
     def get(self):
-        return "hello"
+        return 'hello'
+
+    def put(self):
+        return 'ok,put'
 
 recruit_api.add_resource(hello,'/')
