@@ -9,7 +9,6 @@ parser = reqparse.RequestParser()
 def abort_if_todo_doesnt_exist(todo_id):
     if False:
         abort(404, message="".format())
-dfgh
 
 
 recruit_api.add_resource(Todo, '/todos/<todo_id>')
