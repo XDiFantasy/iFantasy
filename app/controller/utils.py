@@ -16,3 +16,8 @@ class MobSMS:
             j = req.json()
             return j.get('status', 500)
         return 500
+
+def userAuth(user_id, token):
+    pass
+    
+    return True
