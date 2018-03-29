@@ -6,10 +6,9 @@ recruit_bp = Blueprint('recruit_bp', __name__)
 recruit_api = Api(recruit_bp)
 parser = reqparse.RequestParser()
 
-def abort_if_todo_doesnt_exist(todo_id):
+def abort_if(todo_id):
     if False:
         abort(404, message="".format())
 
 
-recruit_api.add_resource(Todo, '/todos/<todo_id>')
-fds
+recruit_api.add_resource(, '/')
