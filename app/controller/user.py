@@ -23,7 +23,7 @@ class UserApi(Resource):
 
         res = MobSMS(sms_key).verify_sms_code(zone, phone, code)
         if res == 200:
-            return jsonify({'resutl': 'ok'})
+            return jsonify({'result': 'ok'})
         else:
             return jsonify({'result': 'no'})
 

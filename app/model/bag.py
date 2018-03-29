@@ -1,28 +1,6 @@
 from app import db
 
 
-class BagPlayer(db.Model):
-    __tablename__ = "bag_player"
-
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    palyer_id = db.Column(db.Integer, db.ForeignKey('player_base.id'))
-    score = db.Column(db.Integer)
-    salary = db.Column(db.Integer)
-    input_data_id = db.Column(db.Integer, db.ForeignKey('input_data.id'))
-    duedate = db.Column(db.DateTime)
-
-    user = db.relationship('User', backref='bagplayer')
-    player = db.relationship('PlayerBase', backref='bagplayer')
-    input_data = db.relationship('InputData', backref='bagplayer')
-
-    def __init__(self, user_id, player_id, score, salary, input_data_id, duedate):
-        self.user_id, self.palyer_id, self.score, self.salary, self.input_data_id, self.duedate = (
-            user_id, player_id, score, salary, input_data_id, duedate
-        )
-
-    def __repr__(self):
-        return "<BagPlayer %r>" % self.id
 
 
 class InputData(db.Model):
