@@ -3,6 +3,6 @@ from .bag import BagEquip, BagPiece, BagProp, PropUsing, InputData,Equip,Piece,B
 from .chat import Friend
 from .game import UserGame
 from .tactics import Strategy, AttrCh
-from .team import PlayerBase,TeamInfo, SeasonData, BagPlayer
-from .user import User, LineUp
+from .team import PlayerBase,TeamInfo, SeasonData, BagPlayer, LineUp
+from .user import User
 from .recruit import Recruit
