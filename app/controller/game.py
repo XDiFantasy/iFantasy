@@ -4,7 +4,6 @@ from app.model import User, UserGame
 from app import db
 import threading
 import time
-from .errors import GameError
 from .message import Message
 from collections import defaultdict
 from .user import UserError,Auth
