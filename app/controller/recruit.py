@@ -1,4 +1,4 @@
-from flask import Blueprint
+from flask import Blueprint,abort
 from flask_restful import Api, Resource, reqparse, fields, marshal_with
 from app import db
 from app.model import Recruit,User
@@ -60,10 +60,10 @@ class Onereruit(Resource):
                 u_info.money -= 100
             else:
                 return {"error": "no enough money"}
-        if r_info.num == 3:
-            getOnePlayer()
-        else:
-            gettrop()
+        # if r_info.num == 3:
+        #     getOnePlayer()
+        # else:
+        #     gettrop()
         r_info.num = (r_info.num+1)%4
         commit()
         pass
