@@ -78,7 +78,7 @@ class Game(Resource):
     def post(self):
         global users, users_lock
         args = self.parse.parse_args(strict=True)
-        
+
         token = request.headers.get('Authorization')
         user_id = args['user_id']
 
@@ -109,7 +109,7 @@ class GameResult(Resource):
         global results, results_lock
         user = User.query.filter_by(id=user_id).first()
         if not user:
-            return str(GameMessage(error=GameError.ILLEGAL_USER))
+            return str(GameMessage(None, *GameError.ILLEGAL_USER))
         if str(user) in results:
             results_lock.acquire()
             res = results[str(user)]
@@ -124,8 +124,10 @@ class GameResult(Resource):
             return str(GameMessage().matching)
         if user_states[str(user)] == GameMessage.DONE:
             #may be a error : 先发一个error，如果客户端继续请求结果，则从数据库中返回
-            reuslt = 
-            return str(GameMessage(error=GameError.RESULT_SENDED,result=))
+            reuslt = UserGame.query.filter_by(user_id=user_id).order_by(UserGame.time.desc()).first()
+            if not result:
+                return str(GameMessage())
+            return str(GameMessage(result,*GameError.RESULT_SENDED))
 
 class FriendGame(Resource):
     
