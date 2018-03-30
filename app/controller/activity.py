@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, abort
 from flask_restful import Api, Resource
 from app.model import Theme, VipCard, User, Vip, Fund, FundType
-from app.controller.message import Message
+from app.controller import Message
 from app import db
 from datetime import datetime, timedelta
 from sqlalchemy.exc import IntegrityError
