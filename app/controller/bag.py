@@ -46,6 +46,7 @@ class UsingPieceApi(Resource):
         piece_data['score'] = data.piece.player.score
         piece_data['salary'] = 200
 
+        return "ok"
 
 ##
 ## Setup the Api resource routing here
