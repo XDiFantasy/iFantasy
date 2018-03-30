@@ -3,7 +3,7 @@ from app import db
 
 class UserGame(db.Model):
     __tablename__ = 'user_game'
-    id = db.Column('id',primary_key = True)
+    id = db.Column('id',db.Integer,primary_key = True)
     user_id = db.Column("user_id", db.ForeignKey('user.id'))
     time = db.Column('time', db.DateTime)
 
