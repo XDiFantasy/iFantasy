@@ -44,7 +44,7 @@ class UsingPieceApi(Resource):
         piece_data['user_id'] = user_id
         piece_data['player_id'] = player_id
         piece_data['score'] = data.piece.player.score
-        piece_data['salary'] = 200
+        piece_data['salary'] = 200 #没找到数据来源，先列成200
 
 
         return "ok"
