@@ -20,12 +20,12 @@ def create_app(config_name):
     db.app = app
     db.init_app(app)
 
-    @app.before_request
-    def before_request():
-        user_id = request.form.get('user_id')
-        token = request.headers.get('Authorization')
-        if not Auth.authToken(user_id, token):
-            return str(Message(None, *UserError.AUTH_FAILED))
+    #@app.before_request
+    #def before_request():
+    #    user_id = request.form.get('user_id')
+    #    token = request.headers.get('Authorization')
+    #    if not Auth.authToken(user_id, token):
+    #        return str(Message(None, *UserError.AUTH_FAILED))
 
     from .controller import user_bp, bag_bp, game_bp, \
         tactics_bp, team_bp, activity_bp, chat_bp, recruit_bp
