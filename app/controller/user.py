@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify
 from flask_restful import Api, Resource, reqparse
 
-from .utils import MobSMS
+from app.controller.utils import MobSMS
 from ..config import sms_key
 import hashlib
 from app.config import Config

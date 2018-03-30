@@ -5,6 +5,7 @@ from app.model import Theme, VipCard
 activity_bp = Blueprint('activity_bp', __name__)
 activity_api = Api(activity_bp)
 
+
 # your code
 class apiForTheme(Resource):
 	def get(self):
