@@ -46,8 +46,11 @@ class GetRecruit(Resource):
         return res
 
 def selectPlayer():
-    query(PlayerBase).filterby()
+    pass
 def getOnePlayer():
+    pass
+def gettrop():
+    pass
 
 class Onereruit(Resource):
     def post(self):

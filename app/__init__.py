@@ -1,6 +1,6 @@
 from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
-from app.controller import Auth
+from app.controller.user import Auth
 from app.model import User
 from app.controller.user import UserError
 from app.controller.message import Message
@@ -24,7 +24,7 @@ def create_app(config_name):
     def before_request():
         user_id = request.form.get('user_id')
         token = request.headers.get('Authorization')
-        if not Auth.authoToken(user_id, token):
+        if not Auth.authToken(user_id, token):
             return str(Message(None, *UserError.AUTH_FAILED))
 
     from .controller import user_bp, bag_bp, game_bp, \

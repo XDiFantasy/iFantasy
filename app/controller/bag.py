@@ -1,13 +1,6 @@
 from flask import Blueprint
 from flask_restful import Api, Resource
-
-bag_bp = Blueprint('bag_bp', __name__)
-bag_api = Api(bag_bp)
-
-
-from flask import Blueprint
-from flask_restful import Api, Resource
-from app.model.bag import BagPiece
+from app.model import BagPiece
 from operator import attrgetter  #sort
 
 bag_bp = Blueprint('bag_bp', __name__)
@@ -40,7 +33,8 @@ class UsingPieceApi(Resource):
             piece_data['total_num'] = piece.piece.total_num
             if piece_data['num'] < piece_data['total_num']:
                 return "碎片不足"
-            else
+            else:
+                pass
                 #if 没有，
                     # 合成一个球员，
                         #if ==

@@ -7,7 +7,6 @@ from ..config import Config
 from datetime import datetime,date
 import time
 from functools import singledispatch
-from app
 
 class MobSMS:
     def __init__(self, appkey):
