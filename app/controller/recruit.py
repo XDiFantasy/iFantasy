@@ -72,13 +72,13 @@ def selectPlayer(type):
 def getMidPlayer(filter):
     players = list(selectPlayer(2)-filter)
     if len(players) > 0:
-        player = choice(players)
+        return choice(players)
     else:
         players = list(selectPlayer(1) - filter)
         if len(players) > 0:
-            player = choice(players)
+            return choice(players)
         else:
-            pass
+            return None
 
 
 def getprop():
