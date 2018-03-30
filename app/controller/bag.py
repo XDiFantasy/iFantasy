@@ -1,12 +1,5 @@
 from flask import Blueprint
 from flask_restful import Api, Resource
-
-bag_bp = Blueprint('bag_bp', __name__)
-bag_api = Api(bag_bp)
-
-
-from flask import Blueprint
-from flask_restful import Api, Resource
 from app.model.bag import BagPiece
 from operator import attrgetter  #sort
 
@@ -14,38 +7,44 @@ bag_bp = Blueprint('bag_bp', __name__)
 bag_api = Api(bag_bp)
 
 
+
 class BagPieceApi(Resource):
     def get(self, user_id):
         data = BagPiece.query.filter_by(user_id=user_id).all()
         result = []
-        for piece in data:
-            piece_data = {}
-            piece_data['name'] = piece.piece.player.name
-            piece_data['num'] = piece.num
-            piece_data['total'] = piece.piece.total_num
-            piece_data['pos1'] = piece.piece.player.pos1
-            piece_data['pos2'] = piece.piece.player.pos2
+        for each in data:
+            each_data = {}
+            each_data['name'] = each.piece.player.name
+            each_data['num'] = each.num
+            each_data['total'] = each.piece.total_num
+            each_data['pos1'] = each.piece.player.pos1
+            each_data['pos2'] = each.piece.player.pos2
 
-            result.append(piece_data)
+            result.append(each_data)
 
         return {'data':result}
 
 class UsingPieceApi(Resource):
     def get(self,user_id,piece_id):
-        data = BagPiece.query.filter_by(user_id=user_id,piece_id=piece_id).all()
+
+        exist_flag = exist_player(user.id, piece.id)
+        if exist_flag
+            return "已拥有 %r" %piece_data['name']
+
+        data = BagPiece.query.filter_by(user_id=user_id, piece_id=piece_id).first()
         result = []
-        for piece in data:
-            piece_data = {}
-            piece_data['num'] = piece.num
-            piece_data['total_num'] = piece.piece.total_num
-            if piece_data['num'] < piece_data['total_num']:
-                return "碎片不足"
-            else
-                #if 没有，
-                    # 合成一个球员，
-                        #if ==
-                            # 删除bag_piece
-                #if 有， 返回提示
+        piece_data = {}
+        piece_data['num'] = data.num
+        piece_data['total_num'] = data.piece.total_num
+        piece_data['name'] = data.piece.player.name
+
+        if piece_data['num'] < piece_data['total_num']:
+            return "碎片不足"
+
+        piece_data['user_id'] = user_id
+        piece_data['player_id'] = player_id
+        piece_data['score'] = data.piece.player.score
+        piece_data['salary'] = 200
 
 
 ##

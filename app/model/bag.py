@@ -6,7 +6,7 @@ class BagPlayer(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    palyer_id = db.Column(db.Integer, db.ForeignKey('player_base.id'))
+    player_id = db.Column(db.Integer, db.ForeignKey('player_base.id'))
     score = db.Column(db.Integer)
     salary = db.Column(db.Integer)
     input_data_id = db.Column(db.Integer, db.ForeignKey('input_data.id'))
