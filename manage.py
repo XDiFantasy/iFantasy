@@ -10,8 +10,8 @@ def make_shell_context():
     VipCard = VipCard, Fund=Fund, FundType=FundType, 
     BagEquip=BagEquip, BagPlayer=BagPlayer, BagPiece=BagPiece,
     BagProp=BagProp,PropUsing=PropUsing,InputData=InputData,
-    Equip=Equip,Piece=Piece,BagTrailCard=BagTrailCard,Friend=Friend,
-    GameHistory=GameHistory,UserGame=UserGame, Strategy=Strategy,AttrCh=AttrCh, 
+    Recruit=Recruit,Equip=Equip,Piece=Piece,BagTrailCard=BagTrailCard,Friend=Friend,
+    UserGame=UserGame, Strategy=Strategy,AttrCh=AttrCh, 
     PlayerBase=PlayerBase,TeamInfo=TeamInfo,User=User, LineUp=LineUp
     )
 
