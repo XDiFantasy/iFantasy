@@ -1,7 +1,7 @@
 from flask import Blueprint
 from flask_restful import Api, Resource, reqparse, fields, marshal_with
 from app import db
-from app.model import Recruit,User
+from app.model import Recruit,User,PlayerBase
 import datetime
 
 recruit_bp = Blueprint('recruit_bp', __name__)
@@ -38,13 +38,16 @@ class GetRecruit(Resource):
             return {"error": "no such user"}
         delta = (datetime.datetime.now()-info.time)
         delta = datetime.timedelta(days=delta.days, seconds=delta.seconds)
-        info = {'num': 3 - info.num}
+        res = {'num': 3 - info.num}
         if delta.days > 0 or delta.seconds > 18000:
-            info['time'] = None
+            res['time'] = None
         else:
-            info['time'] = str(delta)
-        return info
+            res['time'] = str(delta)
+        return res
 
+def selectPlayer():
+    query(PlayerBase).filterby()
+def getOnePlayer():
 
 class Onereruit(Resource):
     def post(self):
