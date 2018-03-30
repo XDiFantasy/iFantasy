@@ -23,8 +23,12 @@ def toJson(obj):
         if type(value) in [int,str,float,bool,list,dict]:
             json[key] = value
     return json
+
+
 class Error:
     NoUser = "no such user", -250
+    NoMoney = "no enough money", -251
+    NoPlayer = "no player can recruit",-252
 
 class rMessage(Message):
     def __init__(self,result=None,error=('',0)):
@@ -69,6 +73,7 @@ def selectPlayer(type):
         res = query(id).filter(score <=70).all()
     return toSet(res)
 
+
 def getMidPlayer(filter):
     players = list(selectPlayer(2)-filter)
     if len(players) > 0:
@@ -99,9 +104,18 @@ class OneRecruit(Resource):
             if u_info.money > 100:
                 u_info.money -= 100
             else:
-                return {"error": "no enough money"}
+                return rMessage(error=Error.NoMoney)
         if r_info.num == 3:
-            getMidPlayer(toSet(b_info))
+            player_id = getMidPlayer(toSet(b_info))
+            if player_id is not None:
+                today = datetime.date.today()
+                duedate = today.replace(year=today.year+1)
+                player = query(PlayerBase).get(player_id)
+                contract = '一年%d万，%d年%d月%d日签约，%d年%d月%d日到期'%(player.price,today.year,
+                            today.month,today.day,duedate.year,duedate.month,duedate.day)
+                add(BagPlayer(u_info.id,player.id,player.score,player.price,None,duedate,contract))
+            else:
+                return rMessage(error=Error.NoPlayer)
         else:
             getprop()
         r_info.num = (r_info.num+1)%4
