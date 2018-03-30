@@ -9,6 +9,7 @@ class User(db.Model):
     level = db.Column(db.Integer)
     money = db.Column(db.Integer)
 
+
     def __init__(self, nickname, tel, level, money):
         self.nickname, self.tel, self.level, self.money = (
             nickname, tel, level, money
