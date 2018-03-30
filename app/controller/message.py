@@ -16,7 +16,8 @@ class Message:
         self.__data['state'] = state
     def add(self, key, value):
         self.__data[key] = value
-    def __str__(self):
+    @property
+    def response(self):
         return jsonify(self.__data)
 
 
