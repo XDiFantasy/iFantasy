@@ -1,6 +1,6 @@
 from flask import Blueprint
 from flask_restful import Api, Resource
-from app.model import PlayerBase,BagPlayer
+from app.model.team import PlayerBase,BagPlayer
 
 team_bp = Blueprint("team_bp", __name__)
 team_api = Api(team_bp)
