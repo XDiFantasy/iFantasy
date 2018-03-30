@@ -1,5 +1,13 @@
 import requests
-
+import json
+import base64
+import hashlib
+from ..model import User
+from ..config import Config
+from datetime import datetime,date
+import time
+from functools import singledispatch
+from app
 
 class MobSMS:
     def __init__(self, appkey):
@@ -17,7 +25,15 @@ class MobSMS:
             return j.get('status', 500)
         return 500
 
-def userAuth(user_id, token):
-    pass
-    
-    return True
+
+
+@singledispatch
+def toJson(value):
+    return value
+
+@toJson.register(datetime)
+def _(value):
+    return str(value)
+@toJson.register(date)
+def _(value):
+    return str(value)
