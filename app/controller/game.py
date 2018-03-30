@@ -11,8 +11,9 @@ from .user import UserError,Auth
 class GameError:
     GAME_FAILED = 'game failed', -1
     RESULT_SENDED = 'result sended', -2
+
 class GameMessage(Message):
-    GAMEING = 'Gaming'
+    GAMING = 'Gaming'
     MATCHING = 'Matching'
     DONE = 'Done'
 
@@ -20,11 +21,11 @@ class GameMessage(Message):
         super(GameMessage,self).__init__(result,error,state)
     @property
     def gaming(self):
-        self.add(result,self.GAMEING)
+        self.add('result',self.GAMING)
         return self
     @property
     def matching(self):
-        self.add(result,self.MATCHING)
+        self.add('result',self.MATCHING)
         return self
     
 
@@ -61,7 +62,7 @@ def gaming(user1, user2):
 def match(user_rank):
     global users, users_lock
     if len(users[user_rank]) != 0:
-        users_lock.acqurie()
+        users_lock.acquire()
         ouser = users[user_rank].pop()
         users_lock.release()
         return ouser
@@ -108,7 +109,7 @@ class GameResult(Resource):
         global results, results_lock
         user = User.query.filter_by(id=user_id).first()
         if not user:
-            return str(GameMessage(None, *GameError.ILLEGAL_USER))
+            return str(GameMessage(None, *UserError.ILLEGAL_USER))
         if str(user) in results:
             results_lock.acquire()
             res = results[str(user)]
@@ -123,7 +124,7 @@ class GameResult(Resource):
             return str(GameMessage().matching)
         if user_states[str(user)] == GameMessage.DONE:
             #may be a error : 先发一个error，如果客户端继续请求结果，则从数据库中返回
-            reuslt = UserGame.query.filter_by(user_id=user_id).order_by(UserGame.time.desc()).first()
+            result = UserGame.query.filter_by(user_id=user_id).order_by(UserGame.time.desc()).first()
             if not result:
                 return str(GameMessage())
             return str(GameMessage(result,*GameError.RESULT_SENDED))
@@ -142,6 +143,7 @@ class FriendGame(Resource):
         firend = User.query.filter_by(id=friend_id).first()
         if not user or not friend:
             return jsonify({"error":'no such user'})
+        return firend
         
         
         
