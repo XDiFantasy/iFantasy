@@ -1,7 +1,6 @@
 from flask import Blueprint
 from flask_restful import Api, Resource
-from app.model.bag import BagPiece
-from operator import attrgetter  #sort
+from app.model import BagPiece
 
 bag_bp = Blueprint('bag_bp', __name__)
 bag_api = Api(bag_bp)
@@ -27,12 +26,13 @@ class BagPieceApi(Resource):
 class UsingPieceApi(Resource):
     def get(self,user_id,piece_id):
 
-        exist_flag = exist_player(user.id, piece.id)
-        if exist_flag
-            return "已拥有 %r" %piece_data['name']
+        #exist_flag = exist_player(user.id, piece.id)
+        #if exist_flag
+        #    return "已拥有 %r" %piece_data['name']
 
         data = BagPiece.query.filter_by(user_id=user_id, piece_id=piece_id).first()
         result = []
+
         piece_data = {}
         piece_data['num'] = data.num
         piece_data['total_num'] = data.piece.total_num
@@ -45,6 +45,7 @@ class UsingPieceApi(Resource):
         piece_data['player_id'] = player_id
         piece_data['score'] = data.piece.player.score
         piece_data['salary'] = 200
+
 
         return "ok"
 

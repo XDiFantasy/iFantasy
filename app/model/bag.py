@@ -1,6 +1,7 @@
 from app import db
 
 
+<<<<<<< HEAD
 class BagPlayer(db.Model):
     __tablename__ = "bag_player"
 
@@ -23,6 +24,8 @@ class BagPlayer(db.Model):
 
     def __repr__(self):
         return "<BagPlayer %r>" % self.id
+=======
+>>>>>>> b9952a65c3f617727676b9c36a45da7a61e75869
 
 
 class InputData(db.Model):
