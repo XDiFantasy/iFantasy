@@ -6,6 +6,10 @@ from ..config import sms_key
 import hashlib
 from app.config import Config
 from app.model import User
+import base64
+import json
+import time
+
 
 user_bp = Blueprint("user_bp", __name__)
 user_api = Api(user_bp)
@@ -29,7 +33,7 @@ class Auth:
         
         user  = User.query.fileter_by(id=user_id).first()
         if not user:
-            raise Exception(Error.ILLEGAL_USER)
+            raise Exception(UserError.ILLEGAL_USER)
 
         header = base64.urlsafe_b64decode(
             bytes(json.dumps(Auth.header), encoding='utf-8')
