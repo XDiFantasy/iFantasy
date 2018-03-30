@@ -1,15 +1,9 @@
 from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
-from app.controller.user import Auth
-from app.model import User
-from app.controller.user import UserError
-from app.controller.message import Message
-
-
 from .config import config
 
-db = SQLAlchemy()
 
+db = SQLAlchemy()
 api_version = 'v1'
 
 
@@ -19,7 +13,9 @@ def create_app(config_name):
     print(app.config['SQLALCHEMY_DATABASE_URI'])
     db.app = app
     db.init_app(app)
-
+    
+    from app.controller import Auth,UserError,Message
+    from app.model import User
     #@app.before_request
     #def before_request():
     #    user_id = request.form.get('user_id')
