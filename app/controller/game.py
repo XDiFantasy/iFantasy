@@ -1,12 +1,14 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource,reqparse
 from app.model import User, UserGame
+from app.model.game import UserMatch
 from app import db
 import threading
 import time
 from .message import Message
 from collections import defaultdict
 from .user import UserError,Auth
+from math import pow, log10
 
 game_bp = Blueprint('game_bp', __name__, static_folder="../static/game")
 game_api = Api(game_bp)
@@ -44,32 +46,47 @@ class GameResult:
     def result(self):
         return self.__result
 
+class GlobalVar:
+    matcher_lock = threading.Lock()
+    results_lock = threading.Lock()
+    userstate_lock = threading.Lock()
+    
+    def __init__(self):
+        self.results = {}
+        self.matchers = defaultdict(list)
+        self.userStates = defaultdict(lambda : None)
 
-results = {}
-# gaming matching done none
-user_states = defaultdict(lambda : None)
-
-users_lock = threading.Lock()
-results_lock = threading.Lock()
-
-matchers = []
+globalVar = GlobalVar()
+p = 0.618
+k = 400*log10(p/(1-p))/5*2
+d = 1000
     
 def rank(user):
-    return 1
+    return (user.usermatch.score - d) // k
+
+def ELO(ra, rb, sa,k = k):
+    ea = 1/(1+pow(10,-(ra-rb)/400))
+    eb = 1-ea
+    new_ra = ra + k*(sa-ea)
+    new_rb = rb + k*(1-sa-eb)
+    return new_ra, new_rb
+    
 
 def gaming(user1, user2):
-    global results, results_lock
-    #net
-    results_lock.acquire()
-    results[str(user1)] = GameResult()
-    results[str(user2)] = GameResult()
-    results_lock.release()
-    user_states[str(user1)] = GameMessage.DONE
-    user_states[str(user2)] = GameMessage.DONE
+    global globalVar
+    #net game
+    globalVar.results_lock.acquire()
+    globalVar.results[str(user1)] = GameResult()
+    globalVar.results[str(user2)] = GameResult()
+    globalVar.results_lock.release()
+    globalVar.userstate_lock.acquire()
+    globalVar.userStates[str(user1)] = GameMessage.DONE
+    globalVar.userStates[str(user2)] = GameMessage.DONE
+    globalVar.userstate_lock.release()
     pass
 
 def match(user_rank, range_ = 0):
-    global users, users_lock
+    global globalVar
     for rank in range(max(user_rank-range_,MIN_RANK),min(user_rank+range_,MAX_RANK)):
         if len(users[rank]) != 0:
             users_lock.acquire()
@@ -77,11 +94,12 @@ def match(user_rank, range_ = 0):
             users_lock.release()
             return ouser.id
     return None
+
 class Matcher:
     MIN_RANK = 0
     MAX_RANK = 10
-    def __init__(self,user,time):
-        self.__rank = rank(user)
+    def __init__(self,user,rank,time):
+        self.__rank = rank
         self.__time = time
         self.__user = user
 
@@ -104,31 +122,34 @@ class Game(Resource):
     parse.add_argument('user_id', type=int)
 
     def post(self):
-        global users, users_lock
+        global globalVar
         args = self.parse.parse_args(strict=True)
 
-        token = request.headers.get('Authorization')
         user_id = args['user_id']
-
-        if Auth.authToken(user_id, token):
-            return GameMessage(None,*UserError.AUTH_FAILED).response
 
         user = User.query.filter_by(id = user_id).first()
         if not user:
             return GameMessage(None, *UserError.ILLEGAL_USER).response
-        user_states[user_id] = GameMessage.MATCHING
+        globalVar.userstate_lock.acquire()
+        globalVar.userStates[user_id] = GameMessage.MATCHING
+        globalVar.userstate_lock.release()
         user_rank = rank(user)
         
         ouser_id = match(user_rank)
         if ouser_id is None:
-            #take user into users
-            users_lock.acquire()
-            users[user_rank].append(user)
-            users_lock.release()
+            #take user into matchers
+            globalVar.matcher_lock.acquire()
+            globalVar.matchers.append(user)
+            globalVar.matcher_lock.release()
             return GameMessage().matching.response
+        ouser = User.query.filter_by(id=ouser_id).first()
+        if ouser is None:
+            return GameMessage(None, *UserError.ILLEGAL_USER).response
         gameThread = threading.Thread(target=gaming, args=(user,ouser))
-        user_states[str(user)] = GameMessage.GAMING
-        user_states[str(ouser)] = GameMessage.GAMING
+        globalVar.userstate_lock.acquire()
+        globalVar.userStates[str(user)] = GameMessage.GAMING
+        globalVar.userStates[str(ouser)] = GameMessage.GAMING
+        globalVar.userstate_lock.release()
         gameThread.start()
         return GameMessage().gaming.response
 
