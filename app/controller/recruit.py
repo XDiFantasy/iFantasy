@@ -1,7 +1,7 @@
 from flask import Blueprint
 from flask_restful import Api, Resource, reqparse
 from app import db
-from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, BagProp, Piece
+from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, BagProp
 from .message import Message
 from random import choice, random
 import datetime
@@ -278,9 +278,13 @@ class RecruitPlayer(Resource):
         return rMessage(result=res[0], code=res[1]).response
 
 
-def dataFilter(data, strs):
-    return data.filter(or_(PlayerBase.pos1 == strs,
-                           PlayerBase.pos2 == strs)).all()
+def dataFilter(items, strs):
+    if strs:
+        items = items.filter(db.or_(PlayerBase.pos1 == strs, PlayerBase.pos2 == strs))
+    res = list()
+    for item in items.all():
+        res.append([item.id, item.name, item.pos1, item.pos2, item.price, item.score])
+    return res
 
 
 class ShowPlayer(Resource):
@@ -289,14 +293,15 @@ class ShowPlayer(Resource):
         order = [PlayerBase.id, PlayerBase.score, PlayerBase.price]
         if not index:
             index = 0
-        data = query(PlayerBase).orderby(order[index])
+        data = query(PlayerBase).order_by(db.desc(order[index]))
+        all_ = dataFilter(data, None)
         c = dataFilter(data, 'c')
         pf = dataFilter(data, 'pf')
         sf = dataFilter(data, 'sf')
         sg = dataFilter(data, 'sg')
         pg = dataFilter(data, 'pg')
-
-        pass
+        res = {'all': all_, 'c': c, 'pf': pf, 'sf': sf, 'sg': sg, 'pg': pg}
+        return rMessage(res).response
 
 
 recruit_api.add_resource(GetRecruit, '/get_recruit_info')
