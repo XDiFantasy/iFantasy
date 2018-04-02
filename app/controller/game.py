@@ -11,6 +11,7 @@ from .user import UserError,Auth
 class GameError:
     GAME_FAILED = 'game failed', -1
     RESULT_SENDED = 'result sended', -2
+    NO_RESULT = 'no result', -3
 
 class GameMessage(Message):
     GAMING = 'Gaming'
@@ -28,9 +29,6 @@ class GameMessage(Message):
         self.add('result',self.MATCHING)
         return self
     
-
-
-
 game_bp = Blueprint('game_bp', __name__, static_folder="../static/game")
 game_api = Api(game_bp)
 session = db.session
@@ -83,11 +81,11 @@ class Game(Resource):
         user_id = args['user_id']
 
         if Auth.authToken(user_id, token):
-            return str(GameMessage(None,*UserError.AUTH_FAILED))
+            return GameMessage(None,*UserError.AUTH_FAILED).response
 
         user = User.query.filter_by(id = user_id).first()
         if not user:
-            return str(GameMessage(None, *UserError.ILLEGAL_USER))
+            return GameMessage(None, *UserError.ILLEGAL_USER).response
         user_states[str(user)] = GameMessage.MATCHING
         user_rank = rank(user)
         
@@ -97,11 +95,11 @@ class Game(Resource):
             users_lock.acquire()
             users[user_rank].append(user)
             users_lock.release()
-            return str(GameMessage().matching)
+            return GameMessage().matching.response
         gameThread = threading.Thread(target=gaming, args=(user,ouser))
         gameThread.start()
         user_states[str(user)] = GameMessage.GAMING
-        return str(GameMessage().gaming)
+        return GameMessage().gaming.response
 
 class GameResult(Resource):
     
@@ -109,7 +107,7 @@ class GameResult(Resource):
         global results, results_lock
         user = User.query.filter_by(id=user_id).first()
         if not user:
-            return str(GameMessage(None, *UserError.ILLEGAL_USER))
+            return GameMessage(None, *UserError.ILLEGAL_USER).response
         if str(user) in results:
             results_lock.acquire()
             res = results[str(user)]
@@ -117,17 +115,17 @@ class GameResult(Resource):
 
             results_lock.release()
             user_states[str(user)] = GameMessage.DONE
-            return str(GameMessage(result=res))
+            return GameMessage(result=res).response
         if user_states[str(user)] == GameMessage.GAMING:
-            return str(GameMessage().gaming)
+            return GameMessage().gaming.response
         if user_states[str(user)] == GameMessage.MATCHING:
-            return str(GameMessage().matching)
+            return GameMessage().matching.response
         if user_states[str(user)] == GameMessage.DONE:
             #may be a error : 先发一个error，如果客户端继续请求结果，则从数据库中返回
             result = UserGame.query.filter_by(user_id=user_id).order_by(UserGame.time.desc()).first()
             if not result:
-                return str(GameMessage())
-            return str(GameMessage(result,*GameError.RESULT_SENDED))
+                return GameMessage(None,*GameError.NO_RESULT).response
+            return GameMessage(result,*GameError.RESULT_SENDED).response
 
 class FriendGame(Resource):
     
