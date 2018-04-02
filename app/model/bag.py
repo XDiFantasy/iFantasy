@@ -51,9 +51,7 @@ class BagPiece(db.Model):
         db.PrimaryKeyConstraint('user_id', 'player_id'),
     )
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-
     player_id = db.Column(db.Integer, db.ForeignKey("player_base.id"))
-
     num = db.Column(db.Integer)
 
     user = db.relationship('User', backref='bagpiece')
