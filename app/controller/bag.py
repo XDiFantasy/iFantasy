@@ -1,10 +1,24 @@
 from flask import Blueprint
 from flask_restful import Api, Resource
-from app.model import BagPiece
+from app.model import BagPiece,Piece
+from app.model import BagPlayer
 
 bag_bp = Blueprint('bag_bp', __name__)
 bag_api = Api(bag_bp)
 
+
+#判断该user是否已经有该piece
+def exist_player(user_id,piece_id):
+    #找到该piece对应的player_id
+    one_piece = Piece.query.filter_by(id=piece_id).first()
+    one_player_id = one_piece.player_id
+    #判断背包里是否已经有该player
+    data = BagPlayer.query.filter_by(user_id=user_id).all()
+    for each in data:
+        if one_player_id == each.player_id:
+            return True
+
+    return False
 
 
 class BagPieceApi(Resource):
@@ -23,15 +37,22 @@ class BagPieceApi(Resource):
 
         return {'data':result}
 
+    def put(self,user_id,piece_id):
+        pass
+
+    def delete(self, user_id,piece_id):
+        pass
+
+#使用piece合成player,
 class UsingPieceApi(Resource):
     def get(self,user_id,piece_id):
 
-        #exist_flag = exist_player(user.id, piece.id)
-        #if exist_flag
-        #    return "已拥有 %r" %piece_data['name']
+        #判断该user是否已经有这个player
+        exist_flag = exist_player(user_id, piece_id)
+        if exist_flag:
+            return "已拥有"
 
         data = BagPiece.query.filter_by(user_id=user_id, piece_id=piece_id).first()
-        result = []
 
         piece_data = {}
         piece_data['num'] = data.num
@@ -41,16 +62,22 @@ class UsingPieceApi(Resource):
         if piece_data['num'] < piece_data['total_num']:
             return "碎片不足"
 
-        piece_data['user_id'] = user_id
-        piece_data['player_id'] = player_id
-        piece_data['score'] = data.piece.player.score
-        piece_data['salary'] = 200 #没找到数据来源，先列成200
+        #合成player，从其他地方调用
+        #AddBagPlayerApi()
 
+        # 消耗使用掉的piece
+        if piece_data['num'] == piece_data['total_num']:
+            # delete bag_piece
+            #BagPiece.delete.filter_by(user_id,piece_id).first()
+            pass
+        else :
+            #修改数据库里的值
+            pass
 
         return "ok"
 
 ##
 ## Setup the Api resource routing here
 ##
-bag_api.add_resource(BagPieceApi,'/pieces/<int:user_id>/')
+bag_api.add_resource(BagPieceApi,'/piecelist/<int:user_id>/')
 bag_api.add_resource(UsingPieceApi,'/usingpiece/<int:user_id>/<int:piece_id>')
