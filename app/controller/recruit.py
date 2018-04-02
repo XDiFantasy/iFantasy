@@ -14,6 +14,7 @@ add = db.session.add
 commit = db.session.commit
 rollback = db.session.rollback
 parser.add_argument('user_id',type=int,required=True,help='cannot get uer_id')
+parser.add_argument('player_id',type=int,help='cannot get player_id')
 
 
 
@@ -90,6 +91,13 @@ def selectPlayer(type):
         res = query(id).filter(score <=70).all()
     return __toSet__(res)
 
+def addPlayer(user_id,player):
+    today = datetime.datetime.today()
+    duedate = today.replace(year=today.year + 1)
+    contract = '一年%d万，%d年%d月%d日签约，%d年%d月%d日到期' % (player.price, today.year,
+                    today.month, today.day, duedate.year, duedate.month, duedate.day)
+    add(BagPlayer(user_id, player.id, player.score, player.price, None, duedate, contract))
+    return ({"name":player.name},State.player)
 
 def getPlayer(user_id,filter,level):
     if level ==1:
@@ -101,13 +109,8 @@ def getPlayer(user_id,filter,level):
     players = selectPlayer(__randomPick__(player_class, prob))
     player_id = choice(list(players))
     if player_id not in filter:
-        today = datetime.datetime.today()
-        duedate = today.replace(year=today.year + 1)
         player = query(PlayerBase).get(player_id)
-        contract = '一年%d万，%d年%d月%d日签约，%d年%d月%d日到期' % (player.price, today.year,
-                   today.month, today.day, duedate.year, duedate.month, duedate.day)
-        add(BagPlayer(user_id, player.id, player.score, player.price, None, duedate, contract))
-        return ({"name":player.name},State.player)
+        return addPlayer(user_id,player)
     else:
         return (player_id,State.OwnPlayer)
 
@@ -242,10 +245,26 @@ class FiveRecruie(Resource):
             mes = rMessage(error=State.FailCommit)
         return mes.response
 
+class RecruitPlayer(Resource):
+    def post(self):
+        args = parser.parse_args()
+        user = query(User).get(args['user_id'])
+        player = query(PlayerBase).get()
+        if user.money >= player.price:
+            user.money -= player.price
+            res = addPlayer(user.id,player)
+            return rMessage(result=res[0], code=res[1]).response
+        else:
+            return rMessage(error=State.NoMoney).response
 
+class ShowPlayer(Resource):
+    def get(self):
+        pass
 recruit_api.add_resource(GetRecruit,'/get_recruit_info')
 recruit_api.add_resource(OneRecruit,'/one_recruit')
 recruit_api.add_resource(FiveRecruie,'/five_recruit')
-# recruit_api.add_resource(RecruitPlayer,'/recruit')
+recruit_api.add_resource(RecruitPlayer,'/recruit')
 # recruit_api.add_resource(ShowPlayer,'/show_all_payer')
+# recruit_api.add_resource(ShowTheme,'/show_theme')
+# recruit_api.add_resource(BuyTheme,'/buy_theme')
 
