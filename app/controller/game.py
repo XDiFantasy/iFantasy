@@ -1,7 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource,reqparse
-from app.model import User, UserGame
-from app.model.game import UserMatch
+from app.model import User, UserGame, LineUp, BagPlayer, UserMatch
 from app import db
 import threading
 import time
@@ -9,6 +8,8 @@ from .message import Message
 from collections import defaultdict
 from .user import UserError,Auth
 from math import pow, log10
+from queue import Queue
+import datetime
 
 game_bp = Blueprint('game_bp', __name__, static_folder="../static/game")
 game_api = Api(game_bp)
@@ -23,6 +24,7 @@ class GameMessage(Message):
     GAMING = 'Gaming'
     MATCHING = 'Matching'
     DONE = 'Done'
+    ERROR = 'Error'
 
     def __init__(self,result = None, error='', state=0):
         super(GameMessage,self).__init__(result,error,state)
@@ -46,61 +48,146 @@ class GameResult:
     def result(self):
         return self.__result
 
-class GlobalVar:
-    matcher_lock = threading.Lock()
-    results_lock = threading.Lock()
-    userstate_lock = threading.Lock()
-    
+class Rank:
+    p = 0.618
+    k = 400*log10(p/(1-p))/5*2
+    d = 1000
     def __init__(self):
-        self.results = {}
-        self.matchers = defaultdict(list)
-        self.userStates = defaultdict(lambda : None)
-
-globalVar = GlobalVar()
-p = 0.618
-k = 400*log10(p/(1-p))/5*2
-d = 1000
+        # scores = db.session.query(UserMatch.user_id, UserMatch.score).all()
+        # self.scores = {row[0]:row[1] for row in scores}
+        self.scores = {}
+    @staticmethod
+    def ELO( ra, rb, sa):
+        ea = 1/(1+pow(10,-(ra-rb)/400))
+        eb = 1-ea
+        new_ra = ra + Rank.k*(sa-ea)
+        new_rb = rb + Rank.k*(1-sa-eb)
+        return new_ra, new_rb
+    def __rank(self, score):
+        r = (score - self.d) // self.k
+        return r if r >= 0 else 0
+    def __call__(self,user):
+        self.scores[user.id] = user.usermatch.score
+        return self.__rank(self.scores[user.id])
     
-def rank(user):
-    return (user.usermatch.score - d) // k
+    def update(self, user,new_score):
+        user.score = new_score
+        db.session.add()
+        db.session.commit()
+        self.scores[user.id] = new_score  
+class GlobalVar:
+    results = {}
+    matchers = defaultdict(lambda : Queue(-1))
+    userStates = defaultdict(lambda : None)
+    tasks = Queue(-1)
+    lineups = {}
+    rank = Rank()
 
-def ELO(ra, rb, sa,k = k):
-    ea = 1/(1+pow(10,-(ra-rb)/400))
-    eb = 1-ea
-    new_ra = ra + k*(sa-ea)
-    new_rb = rb + k*(1-sa-eb)
-    return new_ra, new_rb
+class GameInputData:
+    def __init__(self, input_data):
+        pass
+def net(players):
+    return GameResult(), GameResult()
+def mainGame(lineup1, lineup2):
+    '''
+        net : 
+    '''
+    def getInputData(playerId):
+        player = BagPlayer.query.filter_by(id=playerId).first()
+        return GameInputData(player.input_data)
+    players = [[getInputData(lineup.sf), getInputData(lineup.pf), 
+        getInputData(lineup.c), getInputData(lineup.pg), getInputData(lineup.fg)] 
+        for lineup in [lineup1,lineup2] ]
+    
+    
+    player1Res, player2Res = net(players)
+    return player1Res, player2Res
     
 
-def gaming(user1, user2):
-    global globalVar
-    #net game
-    globalVar.results_lock.acquire()
-    globalVar.results[str(user1)] = GameResult()
-    globalVar.results[str(user2)] = GameResult()
-    globalVar.results_lock.release()
-    globalVar.userstate_lock.acquire()
-    globalVar.userStates[str(user1)] = GameMessage.DONE
-    globalVar.userStates[str(user2)] = GameMessage.DONE
-    globalVar.userstate_lock.release()
-    pass
+class GameThread(threading.Thread):
+    def __init__(self, matcher1, matcher2):
+        threading.Thread.__init__(self)
+        self.matcher1 = matcher1
+        self.matcher2 = matcher2
+    def getLineups(self):
+        matcher1 = self.matcher1
+        matcher2 = self.matcher2
+        lineup1 = LineUp.query.filter_by(id=GlobalVar.lineups[str(matcher1)]).first()
+        lineup2 = LineUp.query.filter_by(id=GlobalVar.lineups[str(matcher2)]).first()
+        if not lineup1 and not lineup2:
+            GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.ERROR))
+            GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.ERROR))
+            return None
+        if not lineup1 and lineup2:
+            GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.ERROR))
+            GlobalVar.tasks.put(AddInMatchersTask(matcher2.user))
+            GlobalVar.tasks.put(ModifyStateTask(str(matcher2),GameMessage.MATCHING))
+            return None
+        if not lineup2 and lineup1:
+            GlobalVar.tasks.put(ModifyStateTask(str(matcher2),GameMessage.ERROR))
+            GlobalVar.tasks.put(AddInMatchersTask(matcher1.user))
+            GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.MATCHING))
+            return None
+        return lineup1, lineup2
+    def writeResult(self, player1Res, player2Res):
+        matcher1 = self.matcher1
+        matcher2 = self.matcher2
+        sa = 1 if player1Res.pts > player2Res else 0.5 if player1Res.pts == player2Res.pts else 0
+        new_score1, new_score2 = GlobalVar.rank.ELO(matcher1.rank,matcher2.rank,sa)
+        GlobalVar.tasks.put(UpdateScoreTask(matcher1.user,new_score1))
+        GlobalVar.tasks.put(UpdateScoreTask(matcher2.user,new_score2))
+        userGame1 = UserGame(matcher1.user.id, datetime.datetime.today(),**player1Res.result)
+        userGame2 = UserGame(matcher1.user.id, datetime.datetime.today(),**player2Res.result)
+        db.session.add(userGame1)
+        db.session.add(userGame2)
+        db.session.commit()
+        GlobalVar.tasks.put(AddInResultsTask(str(matcher1),player1Res))
+        GlobalVar.tasks.put(AddInResultsTask(str(matcher2),player2Res))
+        GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.DONE))
+        GlobalVar.tasks.put(ModifyStateTask(str(matcher2),GameMessage.DONE))
+    def run(self):
+        lineups = self.getLineups()
+        if lineups is None:
+            pass
+        player1Res, player2Res = mainGame(*lineups)
+        self.writeResult(player1Res, player2Res)
+        
 
-def match(user_rank, range_ = 0):
-    global globalVar
-    for rank in range(max(user_rank-range_,MIN_RANK),min(user_rank+range_,MAX_RANK)):
-        if len(users[rank]) != 0:
-            users_lock.acquire()
-            ouser = users[user_rank].pop()
-            users_lock.release()
-            return ouser.id
-    return None
+class ProcessTasksThread(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+    def run(self):
+        global GlobalVar
+        while True:
+            task = GlobalVar.tasks.get()
+            task.run()
+            GlobalVar.tasks.task_done()
+
+class MatchThread(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+    def run(self):
+        global GlobalVar
+        while True:
+            for _, matchers in GlobalVar.matchers.items():
+                start_time = time.time()
+                if matchers.qsize() >= 2:
+                    while matchers.qsize() > 1 and time.time() - start_time < 2:
+                        matcher1 = matchers.get()
+                        matchers.task_done()
+                        matcher2 = matchers.get()
+                        matchers.task_done()
+                        GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.GAMING))
+                        GlobalVar.tasks.put(ModifyStateTask(str(matcher2),GameMessage.GAMING))
+                        GlobalVar.tasks.put(GameTask(matcher1,matcher2))
+            time.sleep(2)
 
 class Matcher:
     MIN_RANK = 0
     MAX_RANK = 10
-    def __init__(self,user,rank,time):
-        self.__rank = rank
-        self.__time = time
+    def __init__(self,user):
+        self.__rank = GlobalVar.rank(user)
+        self.__time = time.time()
         self.__user = user
 
     def __getRange(self):
@@ -113,96 +200,84 @@ class Matcher:
     @property
     def rank(self):
         return self.__rank
+    def __str__(self):
+        return str(self.__user)
+    @property
+    def user(self):
+        return self.__user
+        
+class Task:
+    def __init__(self):
+        pass
+    def run(self):
+        pass
+
+class ModifyStateTask(Task):
     
+    def __init__(self, user_str, new_state):
+        self.user_str = user_str
+        self.state = new_state
+    def run(self):
+        GlobalVar.userStates[self.user_str] = self.state
+class AddInResultsTask(Task):
+    def __init__(self,user_str, game_result):
+        self.user_str = user_str
+        self.game_result = game_result
+    def run(self):
+        GlobalVar.results[self.user_str] = self.game_result
+class AddInMatchersTask(Task):
+    def __init__(self, user):
+        self.user = user
+    def run(self):
+        matcher = Matcher(self.user)
+        GlobalVar.matchers[matcher.rank].put(matcher)   #[matcher.rank].append(matcher)
+class GameTask(Task):
+    def __init__(self,matcher1, matcher2):
+        self.matcher1 = matcher1
+        self.matcher2 = matcher2
+    def run(self):
+        gameThread = GameThread(self.matcher1, self.matcher2)
+        gameThread.start()
+class ModifyLineupTask(Task):
+    def __init__(self, user_str, lineup_id):
+        self.user_str = user_str
+        self.lineup_id = lineup_id
+    def run(self):
+        GlobalVar.lineups[self.user_str] = self.lineup_id
+
+class UpdateScoreTask(Task):
+    def __init__(self,user, new_score):
+        self.user = user
+        self.new_score = new_score    
+    def run(self):
+        GlobalVar.rank.update(self.user, self.new_score)
+        
 
 
 class Game(Resource):
-    
-    parse = reqparse.RequestParser()
-    parse.add_argument('user_id', type=int)
-
+    parser = reqparse.RequestParser()
+    parser.add_argument('user_id',type=int)
     def post(self):
-        global globalVar
-        args = self.parse.parse_args(strict=True)
-
+        global GlobalVar
+        args = self.parser.parse_args(strict=True)
         user_id = args['user_id']
+        lineup_id = args['lineup_id']
 
-        user = User.query.filter_by(id = user_id).first()
-        if not user:
-            return GameMessage(None, *UserError.ILLEGAL_USER).response
-        globalVar.userstate_lock.acquire()
-        globalVar.userStates[user_id] = GameMessage.MATCHING
-        globalVar.userstate_lock.release()
-        user_rank = rank(user)
-        
-        ouser_id = match(user_rank)
-        if ouser_id is None:
-            #take user into matchers
-            globalVar.matcher_lock.acquire()
-            globalVar.matchers.append(user)
-            globalVar.matcher_lock.release()
-            return GameMessage().matching.response
-        ouser = User.query.filter_by(id=ouser_id).first()
-        if ouser is None:
-            return GameMessage(None, *UserError.ILLEGAL_USER).response
-        gameThread = threading.Thread(target=gaming, args=(user,ouser))
-        globalVar.userstate_lock.acquire()
-        globalVar.userStates[str(user)] = GameMessage.GAMING
-        globalVar.userStates[str(ouser)] = GameMessage.GAMING
-        globalVar.userstate_lock.release()
-        gameThread.start()
-        return GameMessage().gaming.response
-
-class GameResult(Resource):
-    
-    def get(self, user_id):
-        global results, results_lock
         user = User.query.filter_by(id=user_id).first()
         if not user:
-            return GameMessage(None, *UserError.ILLEGAL_USER).response
-        if str(user) in results:
-            results_lock.acquire()
-            res = results[str(user)]
-            del results[str(user)]
-
-            results_lock.release()
-            user_states[str(user)] = GameMessage.DONE
-            return GameMessage(result=res,state=700).response
-        if user_states[str(user)] == GameMessage.GAMING:
-            return GameMessage(state=700).gaming.response
-        if user_states[str(user)] == GameMessage.MATCHING:
-            #change rank
-
-            return GameMessage(state=700).matching.response
-        if user_states[str(user)] == GameMessage.DONE:
-            #may be a error : 先发一个error，如果客户端继续请求结果，则从数据库中返回
-            result = UserGame.query.filter_by(user_id=user_id).order_by(UserGame.time.desc()).first()
-            if not result:
-                return GameMessage(None,*GameError.NO_RESULT).response
-            return GameMessage(result,*GameError.RESULT_SENDED).response
-
-class FriendGame(Resource):
-    
-    parse = reqparse.RequestParser()
-    parse.add_argument("user_id", type=int)
-    parse.add_argument('firend_id',type=int)
-    
-    def post(self):
-        args = self.parse.parse_args()
-        user_id = args['user_id']
-        friend_id = args['user_id']
-        user = User.query.filter_by(id=user_id).first()
-        firend = User.query.filter_by(id=friend_id).first()
-        if not user or not friend:
-            return jsonify({"error":'no such user'})
-        return firend
-        
-        
-        
-
+            return GameMessage(None,*UserError.ILLEGAL_USER).response
+        GlobalVar.tasks.put(ModifyStateTask(str(user),GameMessage.MATCHING))
+        GlobalVar.tasks.put(ModifyLineupTask(str(user),lineup_id))
+        GlobalVar.tasks.put(AddInMatchersTask(user))
+        return GameMessage().matching.response
+   
 game_api.add_resource(Game,'/game')
-game_api.add_resource(GameResult, '/gameresult/<int:user_id>')
-        
+
+matchThread = MatchThread()
+processTaskThread = ProcessTasksThread()
+
+matchThread.start()
+processTaskThread.start()
 
 
         
