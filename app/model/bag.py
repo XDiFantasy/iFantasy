@@ -57,7 +57,7 @@ class BagPiece(db.Model):
     num = db.Column(db.Integer)
 
     user = db.relationship('User', backref='bagpiece')
-    piece = db.relationship('Piece', backref='bagpiece')
+    player_base = db.relationship('PlayerBase', backref='bagpiece')
 
     def __init__(self, user_id, player_id, num):
         self.user_id, self.player_id, self.num = (
