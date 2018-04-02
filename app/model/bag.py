@@ -48,22 +48,22 @@ class Equip(db.Model):
 class BagPiece(db.Model):
     __tablename__ = "bag_piece"
     __table_args__ = (
-        db.PrimaryKeyConstraint('user_id', 'piece_id'),
+        db.PrimaryKeyConstraint('user_id', 'player_id'),
     )
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-    piece_id = db.Column(db.Integer, db.ForeignKey("piece.id"))
+    player_id = db.Column(db.Integer, db.ForeignKey("player_base.id"))
     num = db.Column(db.Integer)
 
     user = db.relationship('User', backref='bagpiece')
     piece = db.relationship('Piece', backref='bagpiece')
 
-    def __init__(self, user_id, piece_id, num):
-        self.user_id, self.piece_id, self.num = (
-            user_id, piece_id, num
+    def __init__(self, user_id, player_id, num):
+        self.user_id, self.player_id, self.num = (
+            user_id, player_id, num
         )
 
     def __repr__(self):
-        return "<BagPiece %r, %r>" % (self.user_id, self.piece_id)
+        return "<BagPiece %r, %r>" % (self.user_id, self.player_id)
 
 
 class Piece(db.Model):
@@ -101,7 +101,7 @@ class BagProp(db.Model):
 class BagTrailCard(db.Model):
     __tablename__ = "bag_trail_card"
     __table_args__ = (
-        db.PrimaryKeyConstraint('user_id', 'player_id'),
+        db.PrimaryKeyConstraint('user_id', 'player_id','time'),
     )
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     player_id = db.Column(db.Integer, db.ForeignKey('player_base.id'))
