@@ -1,7 +1,7 @@
 from flask import Blueprint
 from flask_restful import Api, Resource, reqparse, fields, marshal_with
 from app import db
-from app.model import Recruit,User,PlayerBase, BagPlayer,BagTrailCard, BagPiece,BagProp
+from app.model import Recruit,User,PlayerBase, BagPlayer,BagTrailCard, BagPiece,BagProp,Piece
 from .message import Message
 from random import choice,random
 import datetime
@@ -20,7 +20,7 @@ parser.add_argument('user_id',type=int,required=True,help='cannot get uer_id')
 class State:
     NoUser = "no such user", -250
     NoMoney = "no enough money", -251
-    OwnPlayer = "have owned the player",-252
+    OwnPlayer = "have owned the player",-252  #get piece if the player
     FailCommit = "cannot commit to db",-201
     player = 201
     trail = 202
@@ -100,8 +100,6 @@ def getPlayer(user_id,filter,level):
         prob = [0.02,0.98]
     players = selectPlayer(__randomPick__(player_class, prob))
     player_id = choice(list(players))
-    player = query(PlayerBase).get(player_id)
-    result = {"name":player.name}
     if player_id not in filter:
         today = datetime.datetime.today()
         duedate = today.replace(year=today.year + 1)
@@ -109,10 +107,9 @@ def getPlayer(user_id,filter,level):
         contract = '一年%d万，%d年%d月%d日签约，%d年%d月%d日到期' % (player.price, today.year,
                    today.month, today.day, duedate.year, duedate.month, duedate.day)
         add(BagPlayer(user_id, player.id, player.score, player.price, None, duedate, contract))
-        print(duedate)
-        return (result,State.player)
+        return ({"name":player.name},State.player)
     else:
-        return None
+        return (player_id,State.OwnPlayer)
 
 
 def genTrail(filter):
@@ -176,6 +173,15 @@ def getProp(user_id,filter):
             add(BagProp(user_id,0,1))
         return ({'card':'exp'},State.exp)
 
+def toPiece(user_id,player_id):
+    player = query(PlayerBase).get(player_id)
+    num = player.piece[0].total_num
+    piece = query(BagPiece).get((user_id, player.id))
+    if piece:
+        piece.num += num
+    else:
+        add(BagPiece(user_id, player.id, num))
+    return ({'name': player.name, 'num': num}, State.OwnPlayer)
 
 class OneRecruit(Resource):
     def post(self):
@@ -194,15 +200,15 @@ class OneRecruit(Resource):
                 return rMessage(error=State.NoMoney).response
         if r_info.num == 3:
             res = getPlayer(u_info.id,b_info,1)
-            if res:
-                mes = rMessage(result=res[0],code=res[1])
+            if res[1] == State.OwnPlayer:
+                res = toPiece(u_info.id,res[0])
+                mes = rMessage(res[0],res[1])
             else:
-                mes = rMessage(error=State.OwnPlayer)
+                mes = rMessage(result=res[0], code=res[1])
         else:
             res = getProp(u_info.id,b_info)
             mes = rMessage(result=res[0], code=res[1])
         r_info.num = (r_info.num+1)%4
-        print(r_info.num)
         try:
             commit()
         except Exception as e:
@@ -220,11 +226,12 @@ class FiveRecruie(Resource):
             u_info.money -= 400
         else:
             return rMessage(error=State.NoMoney).response
-        res1 = getPlayer(u_info.id,b_info,5)
-        if res1:
-            mes = rMessage(result=res1[0], code=res1[1])
+        res = getPlayer(u_info.id,b_info,5)
+        if res[1] == State.OwnPlayer:
+            res = toPiece(u_info.id, res[0])
+            mes = rMessage(res[0], res[1])
         else:
-            mes = rMessage(error=State.OwnPlayer)
+            mes = rMessage(result=res[0], code=res[1])
         res2 = getProp(u_info.id,b_info)
         mes.add('prop',res2[0])
         try:
@@ -242,7 +249,3 @@ recruit_api.add_resource(FiveRecruie,'/five_recruit')
 # recruit_api.add_resource(RecruitPlayer,'/recruit')
 # recruit_api.add_resource(ShowPlayer,'/show_all_payer')
 
-#幸运招募招到已有球员
-#已有球员碎片
-#piece表为什么需要ID
-#trail_card time也应该是主键
