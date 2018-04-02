@@ -26,7 +26,7 @@ class PlayerBase(db.Model):
     team = db.relationship("TeamInfo", backref='playerbase')
 
     def __init__(self, name, birthday, country, height, wieght, armspan,
-                 reach_height, draft, contract, team_id, cloth_num, pos1, pos2, price, score):
+                 reach_height, draft, team_id, cloth_num, pos1, pos2, price, score):
         (self.name, self.birthday, self.country, self.height, self.wieght, self.armspan,
          self.reach_height, self.draft, self.team_id,
          self.cloth_num, self.pos1, self.pos2, self.price, self.score) = (name, birthday, country,
