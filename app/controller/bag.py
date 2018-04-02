@@ -37,14 +37,11 @@ class BagPieceApi(Resource):
 
         return {'data':result}
 
-    def post(self,user_id,player_id):
-        pass
 
 #使用piece合成player,
 class UsingPieceApi(Resource):
-    def get(self,user_id,player_id):
-
-        #判断该user是否已经有这个player
+    def post(self,user_id,player_id):
+        # 判断该user是否已经有这个player
         exist_flag = exist_player(user_id, player_id)
         if exist_flag:
             return "已拥有"
@@ -59,20 +56,21 @@ class UsingPieceApi(Resource):
         if piece_data['num'] < piece_data['total_num']:
             return "碎片不足"
 
-        #合成player，从其他地方调用
-        #AddBagPlayerApi()
+        # 合成player，从其他地方调用
+        # AddBagPlayerApi()
 
         # 消耗使用掉的piece
         if piece_data['num'] == piece_data['total_num']:
-            #delete bag_piece
-            #BagPiece.delete.filter_by(user_id,player_id).first()
-            #db.session.delete(data)
-            pass
-        else :
-            #修改数据库里的值
-            pass
+            db.session.delete(data)
+            #BagPiece.query.filter_by(user_id=user_id, player_id=player_id).delete()
+            db.session.commit()
+        else:
+            new_num = piece_data['num'] - piece_data['total_num']
+            data.update({'num':new_num})
+
 
         return "ok"
+
 
 
 
