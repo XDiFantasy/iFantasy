@@ -10,7 +10,6 @@ class User(db.Model):
     money = db.Column(db.Integer)
     token = db.Column(db.String(1024))
 
-
     def __init__(self, nickname, tel, level, money):
         self.nickname, self.tel, self.level, self.money = (
             nickname, tel, level, money
