@@ -39,5 +39,8 @@ class UserMatch(db.Model):
     score = db.Column(db.FLOAT,default=1000)
 
     user = db.relationship('User', backref='usermatch')
+    def __init__(self,user_id, score=1000):
+        self.user_id = user_id
+        self.score = score
     def __repr__(self):
         return "<UserMatch %r, %r>" % (self.user_id, self.score)

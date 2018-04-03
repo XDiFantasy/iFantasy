@@ -42,7 +42,7 @@ class GameResult:
     def __init__(self,pts=0,oreb=0,dreb=0,ast=0,stl=0,blk=0,in_pts=0,tov=0,ft=0,three_pt=0):
         self.__result = dict(
             {'pts':pts, 'oreb':oreb,'dreb':dreb,'ast':ast,'stl':stl,
-            'blk':blk,'in_pts':in_pts, 'tov':tov,'ft':ft,'3pt':three_pt}
+            'blk':blk,'in_pts':in_pts, 'tov':tov,'ft':ft,'three_pt':three_pt}
         )
     @property
     def result(self):
@@ -67,12 +67,14 @@ class Rank:
         r = (score - self.d) // self.k
         return r if r >= 0 else 0
     def __call__(self,user):
-        self.scores[user.id] = user.usermatch.score
+        userMatch = UserMatch.query.filter_by(user_id = user.id).first()
+        self.scores[user.id] = userMatch.score
         return self.__rank(self.scores[user.id])
     
     def update(self, user,new_score):
-        user.score = new_score
-        db.session.add()
+        userMatch = UserMatch.query.filter_by(user_id=user.id).first()
+        userMatch.score = new_score
+        db.session.add(userMatch)
         db.session.commit()
         self.scores[user.id] = new_score  
 class GlobalVar:
@@ -96,7 +98,7 @@ def mainGame(lineup1, lineup2):
         player = BagPlayer.query.filter_by(id=playerId).first()
         return GameInputData(player.input_data)
     players = [[getInputData(lineup.sf), getInputData(lineup.pf), 
-        getInputData(lineup.c), getInputData(lineup.pg), getInputData(lineup.fg)] 
+        getInputData(lineup.c), getInputData(lineup.pg), getInputData(lineup.sg)] 
         for lineup in [lineup1,lineup2] ]
     
     
@@ -132,11 +134,11 @@ class GameThread(threading.Thread):
     def writeResult(self, player1Res, player2Res):
         matcher1 = self.matcher1
         matcher2 = self.matcher2
-        sa = 1 if player1Res.pts > player2Res else 0.5 if player1Res.pts == player2Res.pts else 0
+        sa = 1 if player1Res.result['pts'] > player2Res.result['pts'] else 0.5 if player1Res.result['pts'] == player2Res.result['pts'] else 0
         new_score1, new_score2 = GlobalVar.rank.ELO(matcher1.rank,matcher2.rank,sa)
         GlobalVar.tasks.put(UpdateScoreTask(matcher1.user,new_score1))
         GlobalVar.tasks.put(UpdateScoreTask(matcher2.user,new_score2))
-        userGame1 = UserGame(matcher1.user.id, datetime.datetime.today(),**player1Res.result)
+        userGame1 = UserGame(matcher1.user.id, datetime.datetime.today(),**(player1Res.result))
         userGame2 = UserGame(matcher1.user.id, datetime.datetime.today(),**player2Res.result)
         db.session.add(userGame1)
         db.session.add(userGame2)
@@ -251,12 +253,17 @@ class UpdateScoreTask(Task):
         self.new_score = new_score    
     def run(self):
         GlobalVar.rank.update(self.user, self.new_score)
-        
+class DelResultTask(Task):
+    def __init__(self, user):
+        self.user = user
+    def run(self):
+        del GlobalVar.results[str(self.user)]       
 
 
-class Game(Resource):
+class GameApi(Resource):
     parser = reqparse.RequestParser()
     parser.add_argument('user_id',type=int)
+    parser.add_argument('lineup_id',type=int)
     def post(self):
         global GlobalVar
         args = self.parser.parse_args(strict=True)
@@ -266,12 +273,58 @@ class Game(Resource):
         user = User.query.filter_by(id=user_id).first()
         if not user:
             return GameMessage(None,*UserError.ILLEGAL_USER).response
-        GlobalVar.tasks.put(ModifyStateTask(str(user),GameMessage.MATCHING))
-        GlobalVar.tasks.put(ModifyLineupTask(str(user),lineup_id))
-        GlobalVar.tasks.put(AddInMatchersTask(user))
-        return GameMessage().matching.response
+        userState = GlobalVar.userStates[str(user)]
+        if userState is None or userState == GameMessage.DONE:
+            GlobalVar.tasks.put(ModifyStateTask(str(user),GameMessage.MATCHING))
+            GlobalVar.tasks.put(ModifyLineupTask(str(user),lineup_id))
+            GlobalVar.tasks.put(AddInMatchersTask(user))
+            return GameMessage().matching.response
+        return GameMessage(None, *GameError.NO_RESULT)
+        
+        
+
+class GameResultApi(Resource):
+
+    def get(self,user_id):
+        global GlobalVar
+        print(GlobalVar.userStates)
+        print(GlobalVar.results)
+        print(GlobalVar.matchers)
+        user = User.query.filter_by(id = user_id).first()
+        if not user:
+            return GameMessage(None,*UserError.ILLEGAL_USER).response
+        if str(user) not in GlobalVar.results:
+            userState = GlobalVar.userStates[str(user)]
+            if userState is None:
+                return GameMessage(None, *GameError.GAME_FAILED).response
+            elif userState == GameMessage.GAMING:
+                return GameMessage(GameMessage.GAMING,state=700).response
+            elif userState == GameMessage.MATCHING:
+                return GameMessage(GameMessage.MATCHING,state=700).response
+            elif userState == GameMessage.DONE:
+                return GameMessage(None, *GameError.RESULT_SENDED).response
+            else:
+                return GameMessage(None, *GameError.GAME_FAILED).response
+
+        gameResult = GlobalVar.results[str(user)]
+        db.session.add(UserGame(user_id, datetime.datetime.now(), **gameResult.result))
+        db.session.commit()
+        return  GameMessage(gameResult.result,state=700).response
+    def delete(self, user_id):
+        global GlobalVar
+        user = User.query.filter_by(id = user_id).first()
+        if not user:
+            return GameMessage(None,*UserError.ILLEGAL_USER).response
+        GlobalVar.tasks.put(DelResultTask(user))
+        GlobalVar.tasks.put(ModifyStateTask(str(user),GameMessage.DONE))
+        return GameMessage(state=700).response
+
+
+        
+        
    
-game_api.add_resource(Game,'/game')
+game_api.add_resource(GameApi,'/game')
+game_api.add_resource(GameResultApi,'/game_result/<int:user_id>')
 
 matchThread = MatchThread()
 processTaskThread = ProcessTasksThread()

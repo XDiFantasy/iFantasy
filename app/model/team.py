@@ -25,12 +25,12 @@ class PlayerBase(db.Model):
     team = db.relationship("TeamInfo", backref='playerbase')
 
     def __init__(self, name, birthday, country, height, wieght, armspan,
-                 reach_height, draft, contract, team_id, cloth_num, pos1, pos2, price, score):
+                 reach_height, draft, team_id, cloth_num, pos1, pos2, price, score):
         (self.name, self.birthday, self.country, self.height, self.wieght, self.armspan,
-         self.reach_height, self.draft, self.contract, self.team_id,
+         self.reach_height, self.draft, self.team_id,
          self.cloth_num, self.pos1, self.pos2, self.price, self.score) = (name, birthday, country,
                                                                           height, wieght, armspan, reach_height, draft,
-                                                                          contract,
+                                                                          
                                                                           team_id, cloth_num, pos1, pos2, price, score)
 
     def __repr__(self):
@@ -84,9 +84,9 @@ class BagPlayer(db.Model):
     player = db.relationship('PlayerBase', backref='bagplayer')
     input_data = db.relationship('InputData', backref='bagplayer')
 
-    def __init__(self, user_id, player_id, score, salary, input_data_id, duedate):
-        self.user_id, self.palyer_id, self.score, self.salary, self.input_data_id, self.duedate = (
-            user_id, player_id, score, salary, input_data_id, duedate
+    def __init__(self, user_id, player_id, score, salary, input_data_id, duedate,contract):
+        self.user_id, self.palyer_id, self.score, self.salary, self.input_data_id, self.duedate,self.contract = (
+            user_id, player_id, score, salary, input_data_id, duedate, contract
         )
 
     def __repr__(self):
