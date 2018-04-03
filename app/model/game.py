@@ -61,7 +61,11 @@ class InputData(db.Model):
     pf = db.Column(db.FLOAT)
     p_m = db.Column(db.FLOAT)
 
-    def __init__(self, pts,fg_pct)
+    def __init__(self, pts,fg_pct, three_pt_pct, fta, oreb_pct, dreb_pct, ast_pct, tov, stl, blk, pf, p_m):
+        (self.pts, self.fg_pct, self.three_pt_pct, self.fta, self.oreb_pct, self.dreb_pct, self.ast_pct. self.tov,
+        self.stl, self.blk, self.pf, self.p_m) = (
+            pts, fg_pct, three_pt_pct, fta, oreb_pct, dreb_pct, ast_pct, tov, stl, blk, pf, p_m
+        )
 
     def __repr__(self):
         return "<InputData %r>" % self.id
