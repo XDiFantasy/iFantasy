@@ -1,8 +1,8 @@
 from flask import Blueprint
 from flask_restful import Api, Resource,reqparse
 from app import db
-from app.model import BagPiece, Piece
-from app.model import BagPlayer
+from app.model import BagPiece, BagEquip, BagProp, BagTrailCard
+from app.model import BagPlayer,PropUsing
 from app.controller import Message
 from datetime import datetime
 
@@ -136,6 +136,7 @@ class UsingTrailCardApi(Resource):
             player = query(PlayerBase).get(player_id)
             contract = '%d年%d月%d日，%d年%d月%d日到期' % (today.year, today.month, today.day, due.year, due.month, due.day)
             add(BagPlayer(user_id, player_id, player.score, player.price, None, due, contract))
+            commit
             return BagMessage(player.name, BagMessage.USING_TRAIL_CARD_ADD_PLAYER).response
 
 
@@ -159,9 +160,42 @@ class BagEquipApi(Resource):
 
 #使用bag里的equip
 #目前没有equip,这里先预留接口
+#好像只能留空接口
 class UsingEquipApi(Resource):
     def post(self, user_id, equip_id):
         pass
+
+
+class BagPropApi(Resource):
+    def get(self, user_id):
+        data = query(BagProp).get(user_id).first()
+        #若没有，则记为各拥有０个fund_card,exp_card
+        if data == None or len(data) == 0:
+            add(BagProp(user_id= user_id,fund_card_num= 0,exp_card_num= 0))
+            commit
+        result = {}
+        result['fund_card_num'] = data.fund_card_num
+        result['exp_card_num'] = data.exp_card_num
+        return BagMessage(result, BagMessage.PROP_LIST).response
+
+class UsingPropApi(Resource):
+    def post(self, user_id, prop_type):
+        data = query(BagProp).get(user_id = user_id)
+        if data == None or len(data) == 0:
+            return BagMessage(None, BagError.NO_PROP)
+        #0为fund_card,1为exp_card
+        usingdata = query(PropUsing).get(user_id= user_id,prop_type= prop_id)
+        if usingdata == None or len(usingdata) == 0:
+            now = datetime.now()
+            due = now.replace(day= now.day + 3)
+            add(usingdata= PropUsing(user_id= user_id, prop_type= prop_type, duetime= due))
+            commit
+        else:
+            due = usingdata.duetime.replace(day= usingdata.duetime + 3)
+            commit
+
+            return BagMessage(usingdata,BagMessage.USING_PROP).response
+
 
 
 
@@ -173,4 +207,6 @@ bag_api.add_resource(UsingPieceApi,'/usingpiece/<int:user_id>/<int:player_id>')
 bag_api.add_resource(BagTrailCardApi,'/trailcardlist/<int:user_id>')
 bag_api.add_resource(UsingTrailCardApi,'/usingtrailcard/<int:user_id>/<int:player_id>')
 bag_api.add_resource(BagEquipApi,'/equiplist/<int:user_id>')
-bag_api.add_resource(UsingEquipApi,'usingequip/<int:user_id>/<int:equip_id>')
+bag_api.add_resource(UsingEquipApi,'/usingequip/<int:user_id>/<int:equip_id>')
+bag_api.add_resource(BagPropApi,'/proplist/<int:user_id>')
+bag_api.add_resource(UsingPropApi,'/usingprop/<int:user_id>/<int:prop_type>')

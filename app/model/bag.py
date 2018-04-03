@@ -116,6 +116,8 @@ class BagTrailCard(db.Model):
 class PropUsing(db.Model):
     __tablename__ = "prop_using"
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+    # prop_id == 0:fund_card
+    # prop_id == 1:exp_card
     prop_type = db.Column(db.Integer)
     duetime = db.Column(db.DateTime)
 
