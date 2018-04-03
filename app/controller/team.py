@@ -1,10 +1,21 @@
-from flask import Blueprint
+from flask import Blueprint,jsonify
 from flask_restful import Api, Resource
 from app.model import PlayerBase,BagPlayer
+from app.controller import Message
 
 team_bp = Blueprint("team_bp", __name__)
 team_api = Api(team_bp)
 
+
+# 错误码 800-899
+class TeamError:
+    pass
+
+# 返回给前端或安卓端的数据
+class TeamMessage(Message):
+
+    def __init__(self, result=None, error='', state=0):
+        super(TeamMessage, self).__init__(result, error, state)
 
 # 获取背包中所有球员信息,按照位置进行分类,默认是按照评分进行排序
 class AllPlayerAPi(Resource):
@@ -32,7 +43,7 @@ class AllPlayerAPi(Resource):
 
             result.append(player_data)
 
-        return {'data': result, 'message': 'ok'}
+        return TeamMessage(result).response
 
 # 获取单个球员信息
 class PlayerPersonApi(Resource):
@@ -47,7 +58,7 @@ class PlayerPersonApi(Resource):
         result['price'] = data.price
         result['score'] = data.score
 
-        return {'data': result, 'message': 'ok'}
+        return TeamMessage(result).response
 
 
 team_api.add_resource(AllPlayerAPi,

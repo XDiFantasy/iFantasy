@@ -109,7 +109,7 @@ class BagTrailCard(db.Model):
     time = db.Column(db.Integer)
 
     user = db.relationship('User', backref='bagtrailcard')
-    ueplayer = db.relationship('PlayerBase', backref='bagtrailcard')
+    player = db.relationship('PlayerBase', backref='bagtrailcard')
 
     def __init__(self, user_id, palyer_id, num, time):
         self.user_id, self.player_id, self.num, self.time = (
