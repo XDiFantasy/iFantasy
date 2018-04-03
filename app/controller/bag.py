@@ -2,7 +2,8 @@ from flask import Blueprint
 from flask_restful import Api, Resource,reqparse
 from app import db
 from app.model import BagPiece, BagEquip, BagProp, BagTrailCard
-from app.model import BagPlayer,PropUsing
+from app.model import Piece, Equip, PropUsing
+from app.model import BagPlayer
 from app.controller import Message
 from datetime import datetime
 
@@ -210,3 +211,4 @@ bag_api.add_resource(BagEquipApi,'/equiplist/<int:user_id>')
 bag_api.add_resource(UsingEquipApi,'/usingequip/<int:user_id>/<int:equip_id>')
 bag_api.add_resource(BagPropApi,'/proplist/<int:user_id>')
 bag_api.add_resource(UsingPropApi,'/usingprop/<int:user_id>/<int:prop_type>')
+
