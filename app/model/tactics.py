@@ -30,3 +30,14 @@ class Strategy(db.Model):
 class AttrCh(db.Model):
     __tablename__ = 'attr_ch'
     id = db.Column(db.Integer, primary_key=True)
+
+    fg_pct = db.Column(db.FLOAT)
+    three_pt_pct = db.Column(db.FLOAT)
+    fta_pct = db.Column(db.FLOAT)
+    oreb_pct = db.Column(db.FLOAT)
+    dreb_pct = db.Column(db.FLOAT)
+    ast_pct = db.Column(db.FLOAT)
+    tov_pct = db.Column(db.FLOAT)
+    stl_pct = db.Column(db.FLOAT)
+    blk_pct = db.Column(db.FLOAT)
+    pf_pct = db.Column(db.FLOAT)

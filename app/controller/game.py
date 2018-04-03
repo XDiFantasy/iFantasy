@@ -285,7 +285,7 @@ class GameApi(Resource):
 
 class GameResultApi(Resource):
 
-    def get(self,user_id):
+    def get(self,user_id):>>>>>>> master
         global GlobalVar
         print(GlobalVar.userStates)
         print(GlobalVar.results)
