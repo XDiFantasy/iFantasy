@@ -1,13 +1,6 @@
 from app import db
 
 
-class InputData(db.Model):
-    __tablename__ = "input_data"
-    id = db.Column(db.Integer, primary_key=True)
-
-    def __repr__(self):
-        return "<InputData %r>" % self.id
-
 
 class BagEquip(db.Model):
     __tablename__ = "bag_equip"

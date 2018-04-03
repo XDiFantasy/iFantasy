@@ -22,7 +22,8 @@ class apiForTheme(Resource):
 			return mes.response
 		data = list()
 		for row in rows:
-			data.append({'id':row.id,'title':row.title, 'detail':row.detail, 'price':row.price})
+			data.append({'id':row.id,'title':row.title, 'detail':row.detail, 'price':row.price, 
+			'player_one':row.player_one, 'player_two':row.player_two, 'player_three':row.player_three})
 		return Message(data).response
 
 class apiForVip(Resource):
@@ -58,9 +59,12 @@ class apiForVip(Resource):
 			return Message(error='Arg Error: typeId does not exist in Database', state=-1).response
 
 		# check if playerId exists in table User
-		if_playerId_exists_in_user = False if len(query(User).filter_by(id = playerId).all()) == 0 else True
-		if not if_playerId_exists_in_user:
-			return Message(error='Arg Error: playerId does not exist in Database', state=-1).response
+		try:				
+			if_playerId_exists_in_user = False if len(query(User).filter_by(id = playerId).all()) == 0 else True
+			if not if_playerId_exists_in_user:
+				return Message(error='Arg Error: playerId does not exist in Database', state=-1).response
+		except:
+			return Message(error='Database Query Error', state=-1).response
 
 		# check if playerId has enough money
 		try:
@@ -100,7 +104,7 @@ class apiForVip(Resource):
 			except:
 				return Message(error='Database Insert Error', state=-1).response
 		return Message().response
-			
+		# TODO: what if updating money succeeds but prolonging duedate failed? how to implement rollback here?
 
 class apiForFinance(Resource):
 	def get(self):
@@ -111,11 +115,59 @@ class apiForFinance(Resource):
 			return Message(error='Database Query Error', state=-1).response
 		data = list()
 		for row in rows:
-			data.append({'price':row.price, 'rate': row.rate})
+			data.append({'id':row.id, 'price':row.price, 'rate': row.rate})
 		return Message(data).response
 	
-	# def post(self):
-	# 	# playerId buys a financeType
+	def post(self):
+	 	# playerId buys a financeType
+		if 'playerId' not in  request.args or 'financeType' not in request.args:
+			return Message(error='Args Type Error',state=-1).response
+
+		playerId = request.args['playerId'].lower()
+		financeType = request.args['financeType'].lower()
+		
+		# check if playerId exists in table User
+		try:
+			if_playerId_exists_in_user = False if len(query(User).filter_by(id = playerId).all()) == 0 else True
+			if not if_playerId_exists_in_user:
+				return Message(error='Arg Error: playerId does not exist in Database', state=-1).response
+		except IntegrityError as error:
+			return Message(error='Database Query Error', state=-1).response
+
+		# check if financeType exists in table fund_type
+		try:
+			if_financeType_exists_in_fund_type = False if len(query(FundType).filter_by(id = financeType).all()) == 0 else True
+			if not if_financeType_exists_in_fund_type:
+				return Message(error='Arg Error: financeType does not exist in Database', state=-1).response
+		except:
+			return Message(error='Database Query Error', state=-1).response
+
+		# playerId buys financeType
+		# check if playerId has enough money
+		try:
+			money_left = query(User).filter_by(id = playerId).first().money
+			money_needed = query(FundType).filter_by(id = financeType).first().price
+		except:
+			return Message(error='Database Query Error', state=-1).response
+		if money_left <= money_needed:
+			return Message(error='Not enough money in account', state=-1).response
+		# update playerId's money in account
+		try:
+			this_user = query(User).filter_by(id = playerId).first()
+			this_user.money -= money_needed
+			db.session.commit()
+		except:
+			return Message(error='Database Update Error', state=-1).response
+		# insert into table fund
+		row = Fund(user_id = playerId, fund_type_id = financeType)
+		try:
+			db.session.add(row)
+			db.session.commit()
+		except:
+			return Message(error='Database Insert Error', state=-1).response
+		return Message().response
+
+
 
 activity_api.add_resource(apiForTheme, '/theme/')
 activity_api.add_resource(apiForVip, '/vip/')
