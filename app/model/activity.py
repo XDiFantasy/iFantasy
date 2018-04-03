@@ -71,9 +71,7 @@ class FundType(db.Model):
 
 class Fund(db.Model):
     __tablename__ = 'fund'
-    __table_args__ = (
-        db.PrimaryKeyConstraint('user_id', 'fund_type_id'),
-    )
+    id = db.Column(db.Integer, primary_key=True, nullable=False, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     fund_type_id = db.Column(db.Integer, db.ForeignKey('fund_type.id'))
     

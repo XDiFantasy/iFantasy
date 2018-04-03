@@ -31,24 +31,35 @@ class apiForVip(Resource):
 	duration = [7,30,365,9999]
 
 	def get(self):
-		# get prices of all four types of vip
-		res = dict()
-		for card in self.card_type:
-			index = self.card_type.index(card)
-			try:		
-				res[card] = query(VipCard).filter_by(time = self.duration[index]).first().price
+		if 'userId' in request.args:
+			# get VIP level of userId
+			userId = request.args['userId']
+			try:
+				vipLevel = query(Vip).filter_by(user_id=userId).first().level
+				return Message(vipLevel).response
 			except:
 				return Message(error='Database Query Error', state=-1).response
-		return Message(res).response
+		else:
+			# get prices of all four types of vip
+			res = dict()
+			for card in self.card_type:
+				index = self.card_type.index(card)
+				try:		
+					res[card] = query(VipCard).filter_by(time = self.duration[index]).first().price
+				except:
+					return Message(error='Database Query Error', state=-1).response
+			return Message(res).response
 		
 	def post(self):
-		# playerId buys vipType
+		# userId buys vipType
 
-		if 'playerId' not in  request.args or 'vipType' not in request.args:
+		if 'userId' not in  request.form or 'vipType' not in request.form:
 			return Message(error='Args Type Error',state=-1).response
 
-		playerId = request.args['playerId'].lower()
-		vipType = request.args['vipType'].lower()
+		userId = request.form['userId'] 
+		vipType = request.form['vipType']
+		# print('type of userId: ' + str(type(userId)) + ', value: ' + str(userId))
+		# print('type of vipType: ' + str(type(vipType)) + ', value: ' + str(userId))
 
 		# check if vipType is valid
 		if_vipType_exists = False
@@ -56,48 +67,48 @@ class apiForVip(Resource):
 			if vipType == card:
 				if_vipType_exists = True
 		if not if_vipType_exists:
-			return Message(error='Arg Error: typeId does not exist in Database', state=-1).response
+			return Message(error='Arg Error: vipType does not exist in Database', state=-1).response
 
-		# check if playerId exists in table User
+		# check if userId exists in table User
 		try:				
-			if_playerId_exists_in_user = False if len(query(User).filter_by(id = playerId).all()) == 0 else True
-			if not if_playerId_exists_in_user:
-				return Message(error='Arg Error: playerId does not exist in Database', state=-1).response
+			if_userId_exists_in_user = False if len(query(User).filter_by(id = userId).all()) == 0 else True
+			if not if_userId_exists_in_user:
+				return Message(error='Arg Error: userId does not exist in Database', state=-1).response
 		except:
 			return Message(error='Database Query Error', state=-1).response
 
-		# check if playerId has enough money
+		# check if userId has enough money
 		try:
 			index = self.card_type.index(vipType)
-			money_left = query(User).filter_by(id = playerId).first().money
+			money_left = query(User).filter_by(id = userId).first().money
 			money_needed = query(VipCard).filter_by(time = self.duration[index]).first().price
 		except:
 			return Message(error='Database Query Error', state=-1).response
 		if money_left <= money_needed:
 			return Message(error='Not enough money in account', state=-1).response
 		
-		# update playerId's money in account
+		# update userId's money in account
 		try:
-			this_user = query(User).filter_by(id = playerId).first()
+			this_user = query(User).filter_by(id = userId).first()
 			this_user.money -= money_needed
 			db.session.commit()
 		except:
 			return Message(error='Database Update Error', state=-1).response
 
-		# check if playerId exists in table Vip, compute the next duedate
+		# check if userId exists in table Vip, compute the next duedate
 		time_delta = timedelta(days = self.duration[self.card_type.index(vipType)])
-		if_playerId_exists_in_vip = False if len(query(Vip).filter_by(user_id = playerId).all()) == 0 else True
-		duedate_before = query(Vip).filter_by(user_id = playerId).first().duedate if if_playerId_exists_in_vip else datetime.now()
+		if_userId_exists_in_vip = False if len(query(Vip).filter_by(user_id = userId).all()) == 0 else True
+		duedate_before = query(Vip).filter_by(user_id = userId).first().duedate if if_userId_exists_in_vip else datetime.now()
 		duedate_after = duedate_before + time_delta
-		if if_playerId_exists_in_vip:
+		if if_userId_exists_in_vip:
 			try:
-				row = query(Vip).filter_by(user_id = playerId).first()
+				row = query(Vip).filter_by(user_id = userId).first()
 				row.duedate = duedate_after
 				db.session.commit()
 			except:
 				return Message(error='Database Update Error', state=-1).response
 		else:
-			row = Vip(user_id = playerId, level = 1, active = True, duedate = duedate_after)
+			row = Vip(user_id = userId, level = 1, active = True, duedate = duedate_after)
 			try:
 				db.session.add(row)
 				db.session.commit()
@@ -119,18 +130,18 @@ class apiForFinance(Resource):
 		return Message(data).response
 	
 	def post(self):
-	 	# playerId buys a financeType
-		if 'playerId' not in  request.args or 'financeType' not in request.args:
+	 	# userId buys a financeType
+		if 'userId' not in  request.form or 'financeType' not in request.form:
 			return Message(error='Args Type Error',state=-1).response
 
-		playerId = request.args['playerId'].lower()
-		financeType = request.args['financeType'].lower()
+		userId = request.form['userId']
+		financeType = request.form['financeType']
 		
-		# check if playerId exists in table User
+		# check if userId exists in table User
 		try:
-			if_playerId_exists_in_user = False if len(query(User).filter_by(id = playerId).all()) == 0 else True
-			if not if_playerId_exists_in_user:
-				return Message(error='Arg Error: playerId does not exist in Database', state=-1).response
+			if_userId_exists_in_user = False if len(query(User).filter_by(id = userId).all()) == 0 else True
+			if not if_userId_exists_in_user:
+				return Message(error='Arg Error: userId does not exist in Database', state=-1).response
 		except IntegrityError as error:
 			return Message(error='Database Query Error', state=-1).response
 
@@ -142,24 +153,24 @@ class apiForFinance(Resource):
 		except:
 			return Message(error='Database Query Error', state=-1).response
 
-		# playerId buys financeType
-		# check if playerId has enough money
+		# userId buys financeType
+		# check if userId has enough money
 		try:
-			money_left = query(User).filter_by(id = playerId).first().money
+			money_left = query(User).filter_by(id = userId).first().money
 			money_needed = query(FundType).filter_by(id = financeType).first().price
 		except:
 			return Message(error='Database Query Error', state=-1).response
 		if money_left <= money_needed:
 			return Message(error='Not enough money in account', state=-1).response
-		# update playerId's money in account
+		# update userId's money in account
 		try:
-			this_user = query(User).filter_by(id = playerId).first()
+			this_user = query(User).filter_by(id = userId).first()
 			this_user.money -= money_needed
 			db.session.commit()
 		except:
 			return Message(error='Database Update Error', state=-1).response
 		# insert into table fund
-		row = Fund(user_id = playerId, fund_type_id = financeType)
+		row = Fund(user_id = userId, fund_type_id = financeType)
 		try:
 			db.session.add(row)
 			db.session.commit()
@@ -169,6 +180,6 @@ class apiForFinance(Resource):
 
 
 
-activity_api.add_resource(apiForTheme, '/theme/')
-activity_api.add_resource(apiForVip, '/vip/')
-activity_api.add_resource(apiForFinance, '/finance/')
+activity_api.add_resource(apiForTheme, '/theme')
+activity_api.add_resource(apiForVip, '/vip')
+activity_api.add_resource(apiForFinance, '/finance')
