@@ -51,7 +51,7 @@ class InputData(db.Model):
     pts = db.Column(db.Integer)
     fg_pct = db.Column(db.FLOAT)
     three_pt_pct = db.Column(db.FLOAT)
-    ft_pct = db.Column(db.FLOAT)
+    fta = db.Column(db.FLOAT)
     oreb_pct = db.Column(db.FLOAT)
     dreb_pct = db.Column(db.FLOAT)
     ast_pct = db.Column(db.FLOAT)
