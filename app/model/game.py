@@ -44,3 +44,24 @@ class UserMatch(db.Model):
         self.score = score
     def __repr__(self):
         return "<UserMatch %r, %r>" % (self.user_id, self.score)
+
+class InputData(db.Model):
+    __tablename__ = "input_data"
+    id = db.Column(db.Integer, primary_key=True)
+    pts = db.Column(db.Integer)
+    fg_pct = db.Column(db.FLOAT)
+    three_pt_pct = db.Column(db.FLOAT)
+    ft_pct = db.Column(db.FLOAT)
+    oreb_pct = db.Column(db.FLOAT)
+    dreb_pct = db.Column(db.FLOAT)
+    ast_pct = db.Column(db.FLOAT)
+    tov = db.Column(db.FLOAT)
+    stl = db.Column(db.FLOAT)
+    blk = db.Column(db.FLOAT)
+    pf = db.Column(db.FLOAT)
+    p_m = db.Column(db.FLOAT)
+
+    def __init__(self, pts,fg_pct)
+
+    def __repr__(self):
+        return "<InputData %r>" % self.id
