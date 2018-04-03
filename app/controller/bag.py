@@ -125,5 +125,5 @@ class BagEquipApi(Resource):
 bag_api.add_resource(BagPieceApi,'/piecelist/<int:user_id>/')
 bag_api.add_resource(UsingPieceApi,'/usingpiece/<int:user_id>/<int:player_id>')
 bag_api.add_resource(BagTrailCardApi,'/trailcardlist/<int:user_id>')
-bag_api.add_resource(UsingTrailCardApi,'/usingtrailcard/<int:user_id>/<int player_id>')
+bag_api.add_resource(UsingTrailCardApi,'/usingtrailcard/<int:user_id>/<int:player_id>')
 bag_api.add_resource(BagEquipApi,'/equiplist/<int:user_id>')

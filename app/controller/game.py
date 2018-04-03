@@ -86,9 +86,18 @@ class GlobalVar:
     rank = Rank()
 
 class GameInputData:
+    __colNames = (
+        'pts', 'fg_pct','three_pt_pct', 'fta', 'oreb_pct',
+        'dreb_pct', 'ast_pct', 'tov', 'stl','blk','pf','p_m'
+    )
     def __init__(self, input_data):
-        pass
+        self.__result = {
+            colName : getattr(input_data,colName) for colName in self.__colNames
+        }
 def net(players):
+    '''
+        players : [[user1's players],[user2's players]]
+    '''
     return GameResult(), GameResult()
 def mainGame(lineup1, lineup2):
     '''
@@ -285,7 +294,7 @@ class GameApi(Resource):
 
 class GameResultApi(Resource):
 
-    def get(self,user_id):>>>>>>> master
+    def get(self,user_id):
         global GlobalVar
         print(GlobalVar.userStates)
         print(GlobalVar.results)
@@ -319,6 +328,7 @@ class GameResultApi(Resource):
         GlobalVar.tasks.put(ModifyStateTask(str(user),GameMessage.DONE))
         return GameMessage(state=700).response
 
+        
 
         
         
