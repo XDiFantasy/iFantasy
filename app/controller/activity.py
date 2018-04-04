@@ -1,9 +1,9 @@
 from flask import Blueprint, jsonify, request, abort
 from flask_restful import Api, Resource
-from app.model import Theme, VipCard, User, Vip, Fund, FundType
+from app.model import Theme, VipCard, User, Vip, Fund, FundType, PlayerBase
 from app.controller import Message
 from app import db
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from sqlalchemy.exc import IntegrityError
 
 activity_bp = Blueprint('activity_bp', __name__)
@@ -14,17 +14,35 @@ query = db.session.query
 # your code
 class apiForTheme(Resource):
 	def get(self):
-		rows = list()
-		try:
-			rows = query(Theme).all()
-		except:
-			mes = Message(error='Database Query Error', state=-1)
-			return mes.response
-		data = list()
-		for row in rows:
-			data.append({'id':row.id,'title':row.title, 'detail':row.detail, 'price':row.price, 
-			'player_one':row.player_one, 'player_two':row.player_two, 'player_three':row.player_three})
-		return Message(data).response
+		if 'themeId' in request.args:
+			# get info of the three players in themeId
+			themeId = request.args['themeId']
+			try:
+				theme = query(Theme).filter_by(id=themeId).first()
+				data = list()
+				players = [theme.player_one, theme.player_two, theme.player_three]
+				for index in range(3):
+					player = query(PlayerBase).filter_by(id=players[index]).first()
+					birthday = datetime(year=player.birthday.year, month=player.birthday.month, day=player.birthday.day)
+					ageInDays = (datetime.now() - birthday).days
+					ageInYears = ageInDays // 365
+					data.append({'name':player.name, 'age':ageInYears, 'price':player.price, 'score':player.score})
+				return Message(data).response
+			except:
+				return Message(error='Database Query Error', state=-1).response
+		else: 
+			# when there is not args in request, return list of all themes
+			rows = list()
+			try:
+				rows = query(Theme).all()
+			except:
+				mes = Message(error='Database Query Error', state=-1)
+				return mes.response
+			data = list()
+			for row in rows:
+				data.append({'id':row.id, 'title':row.title, 'detail':row.detail, 'price':row.price, 
+				'player_one':row.player_one, 'player_two':row.player_two, 'player_three':row.player_three})
+			return Message(data).response
 
 class apiForVip(Resource):
 	card_type = ['week','month','year','permanent']
@@ -91,7 +109,7 @@ class apiForVip(Resource):
 		try:
 			this_user = query(User).filter_by(id = userId).first()
 			this_user.money -= money_needed
-			db.session.commit()
+			# db.session.commit()
 		except:
 			return Message(error='Database Update Error', state=-1).response
 
@@ -142,7 +160,7 @@ class apiForFinance(Resource):
 			if_userId_exists_in_user = False if len(query(User).filter_by(id = userId).all()) == 0 else True
 			if not if_userId_exists_in_user:
 				return Message(error='Arg Error: userId does not exist in Database', state=-1).response
-		except IntegrityError as error:
+		except:
 			return Message(error='Database Query Error', state=-1).response
 
 		# check if financeType exists in table fund_type
@@ -166,7 +184,8 @@ class apiForFinance(Resource):
 		try:
 			this_user = query(User).filter_by(id = userId).first()
 			this_user.money -= money_needed
-			db.session.commit()
+			# db.session.commit()
+			# later commit() is better, since the transcation includes other operations
 		except:
 			return Message(error='Database Update Error', state=-1).response
 		# insert into table fund
