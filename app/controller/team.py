@@ -33,6 +33,10 @@ class AllPlayerAPi(Resource):
             if pos is not None:
                 if player.player.pos1 != pos and player.player.pos2 != pos:
                     continue
+                else:
+                    tmp_pos = pos
+            else:
+                pass
             player_data = {}
             player_data['player_id'] = player.player.id
             player_data['name'] = player.player.name
