@@ -11,9 +11,9 @@ class User(db.Model):
     logintoken = db.Column(db.String(256))
     accesstoken = db.Column(db.String(256))
 
-    def __init__(self, nickname, tel, level, money):
-        self.nickname, self.tel, self.level, self.money = (
-            nickname, tel, level, money
+    def __init__(self, nickname, tel, level, money, logintoken, accesstoken):
+        self.nickname, self.tel, self.level, self.money, self.logintoken, self.accesstoken = (
+            nickname, tel, level, money, logintoken, accesstoken
         )
 
     def __repr__(self):
