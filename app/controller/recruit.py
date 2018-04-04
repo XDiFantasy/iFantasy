@@ -1,7 +1,7 @@
 from flask import Blueprint
 from flask_restful import Api, Resource, reqparse
 from app import db
-from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, BagProp
+from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, BagProp,Theme
 from .message import Message
 from random import choice, random
 import datetime
@@ -16,6 +16,7 @@ rollback = db.session.rollback
 parser.add_argument('user_id', type=int)
 parser.add_argument('player_id', type=int)
 parser.add_argument('type', type=int)  # 1-score,2-price
+parser.add_argument('theme_id', type=int)
 
 
 class State:
@@ -304,10 +305,35 @@ class ShowPlayer(Resource):
         return rMessage(res).response
 
 
+class BuyTheme(Resource):
+    def post(self):
+        args = parser.parse_args()
+        theme = query(Theme).get(args['theme_id'])
+        user = query(User).get(args['user_id'])
+        if user.money < theme.price:
+            return rMessage(error=State.NoMoney).response
+        user.money -= theme.price
+        bag_players = [player.player_id for player in user.bagplayer]
+        res = list()
+        for player_id in [theme.player_one,theme.player_two,theme.player_three]:
+            if player_id in bag_players:
+                data = toPiece(user.id,player_id)
+            else:
+                player = query(PlayerBase).get(player_id)
+                data = addPlayer(user.id,player)
+            res.append(data[0])
+        try:
+            commit()
+        except Exception as e:
+            rollback()
+            print(e)
+            return rMessage(error=State.FailCommit).response
+        return rMessage(res).response
+
+
 recruit_api.add_resource(GetRecruit, '/get_recruit_info')
 recruit_api.add_resource(OneRecruit, '/one_recruit')
 recruit_api.add_resource(FiveRecruie, '/five_recruit')
 recruit_api.add_resource(RecruitPlayer, '/recruit')
 recruit_api.add_resource(ShowPlayer, '/show_all_payer')
-# recruit_api.add_resource(ShowTheme,'/show_theme')
-# recruit_api.add_resource(BuyTheme,'/buy_theme')
+recruit_api.add_resource(BuyTheme,'/buy_theme')
