@@ -36,12 +36,11 @@ class AllPlayerAPi(Resource):
                 else:
                     tmp_pos = pos
             else:
-                pass
+                tmp_pos = player.player.pos1
             player_data = {}
             player_data['player_id'] = player.player.id
             player_data['name'] = player.player.name
-            player_data['pos1'] = player.player.pos1
-            player_data['pos2'] = player.player.pos2
+            player_data['pos'] = tmp_pos
             player_data['score'] = player.score
             player_data['salary'] = player.salary
 
