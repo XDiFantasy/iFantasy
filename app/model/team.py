@@ -85,7 +85,7 @@ class BagPlayer(db.Model):
 
     def __init__(self, user_id, player_id, score, salary, input_data_id, duedate,contract):
 
-        self.user_id, self.palyer_id, self.score, self.salary, self.input_data_id, self.duedate,self.contract = (
+        self.user_id, self.player_id, self.score, self.salary, self.input_data_id, self.duedate,self.contract = (
             user_id, player_id, score, salary, input_data_id, duedate, contract
 
         )
