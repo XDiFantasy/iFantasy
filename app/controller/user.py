@@ -1,15 +1,17 @@
+import base64
+import hashlib
+import json
+import re
+import time
+
 from flask import Blueprint, request
 from flask_restful import Api, Resource, reqparse
 
+from app.config import Config
 from app.controller import Message
 from app.controller.utils import MobSMS
-from ..config import sms_key
-import hashlib
-from app.config import Config
 from app.model import User
-import base64
-import json
-import time
+from ..config import sms_key
 
 user_bp = Blueprint("user_bp", __name__)
 user_api = Api(user_bp)
@@ -37,9 +39,15 @@ class Auth:
         sha256 = hashlib.sha256()
         sha256.update(header)
         sha256.update(payload)
-        sha256.update(Config.SECRET_KEY)
+        sha256.update(base64.urlsafe_b64encode(Config.SECRET_KEY))
         temptoken = header + b'.' + payload + b'.' + bytes(sha256.hexdigest(), encoding='utf-8')
-        return str.encode(temptoken)
+        return str(temptoken, encoding="utf-8")
+
+    @staticmethod
+    def authTempToken(temptoken):
+        if re.match('^(.){40}(\\.)(.){104}(\\.)(.){64}$', temptoken):
+            return True
+        return False
 
     @staticmethod
     def generateLoginToken(user_id):
@@ -59,9 +67,9 @@ class Auth:
         sha256 = hashlib.sha256()
         sha256.update(header)
         sha256.update(payload)
-        sha256.update(Config.SECRET_KEY)
+        sha256.update(base64.urlsafe_b64encode(Config.SECRET_KEY))
         logintoken = header + b'.' + payload + b'.' + bytes(sha256.hexdigest(), encoding='utf-8')
-        return str.encode(logintoken)
+        return str(logintoken, encoding="utf-8")
 
     @staticmethod
     def generateAccessToken(user_id):
@@ -81,9 +89,9 @@ class Auth:
         sha256 = hashlib.sha256()
         sha256.update(header)
         sha256.update(payload)
-        sha256.update(Config.SECRET_KEY)
-        token = header + b'.' + payload + b'.' + bytes(sha256.hexdigest(), encoding='utf-8')
-        return str.encode(token)
+        sha256.update(base64.urlsafe_b64encode(Config.SECRET_KEY))
+        accesstoken = header + b'.' + payload + b'.' + bytes(sha256.hexdigest(), encoding='utf-8')
+        return str(accesstoken, encoding="utf-8")
 
     @staticmethod
     def authToken(user_id, token):

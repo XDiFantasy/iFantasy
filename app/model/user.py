@@ -8,7 +8,8 @@ class User(db.Model):
     tel = db.Column(db.String(15))
     level = db.Column(db.Integer)
     money = db.Column(db.Integer)
-    token = db.Column(db.String(1024))
+    logintoken = db.Column(db.String(256))
+    accesstoken = db.Column(db.String(256))
 
     def __init__(self, nickname, tel, level, money):
         self.nickname, self.tel, self.level, self.money = (
