@@ -18,3 +18,14 @@ class User(db.Model):
 
     def __repr__(self):
         return "<User %r>" % self.id
+
+    def user2dict(self):
+        return {
+            'id': self.id,
+            'nickname': self.nickname,
+            'phone': self.tel,
+            'level': self.level,
+            'money': self.money,
+            'logintoken': self.logintoken,
+            'accesstoken': self.accesstoken
+        }
