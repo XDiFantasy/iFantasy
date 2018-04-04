@@ -22,7 +22,7 @@ class BagError:
     NO_EQUIP = 'You have no equip', -303
     NO_PROP = 'You have no Prop', -304
     NOT_ENOUGH_PIECE = 'You have no enough piece', -305
-    NOT_ENOUGH_TRAIL_CARD = 'You have no this trail cards', -306
+    NOT_ENOUGH_TRAIL_CARD = 'You have no this trail card', -306
     PLAYER_REPEAT = 'you already have this player', -307
 
 
