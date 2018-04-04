@@ -56,7 +56,7 @@ class TeamInfo(db.Model):
 class SeasonData(db.Model):
     __tablename__ = 'season_data'
     id = db.Column(db.Integer, primary_key=True)
-    season = db.Column(db.String(15))
+    season = db.Column(db.String(15)) # 赛季时间
     is_regular = db.Column(db.Boolean)
     player_id = db.Column(db.Integer, db.ForeignKey('player_base.id'))
     player = db.relationship('PlayerBase', backref='seasondata')
