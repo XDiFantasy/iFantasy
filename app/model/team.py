@@ -22,7 +22,6 @@ class PlayerBase(db.Model):
     price = db.Column(db.Integer)
     score = db.Column(db.Integer)
 
-    season = db.relationship('SeasonData', backref='playerbase')
     team = db.relationship("TeamInfo", backref='playerbase')
 
     def __init__(self, name, birthday, country, height, wieght, armspan,
@@ -56,10 +55,34 @@ class TeamInfo(db.Model):
 class SeasonData(db.Model):
     __tablename__ = 'season_data'
     id = db.Column(db.Integer, primary_key=True)
-    season = db.Column(db.String(15))
+    season = db.Column(db.String(15)) # 赛季时间
     is_regular = db.Column(db.Boolean)
     player_id = db.Column(db.Integer, db.ForeignKey('player_base.id'))
     player = db.relationship('PlayerBase', backref='seasondata')
+
+    gp = db.Column(db.Integer)
+    min = db.Column(db.Float)
+    reb = db.Column(db.Float)
+    fg_pct = db.Column(db.Float)
+    fg3_pct = db.Column(db.Float)
+    ft_pct = db.Column(db.Float)
+
+    pts = db.Column(db.Float)
+    ast = db.Column(db.Float)
+    oreb = db.Column(db.Float)
+    dreb = db.Column(db.Float)
+    stl = db.Column(db.Float)
+    blk = db.Column(db.Float)
+    tov = db.Column(db.Float)
+    fgm = db.Column(db.Float)
+    fga = db.Column(db.Float)
+    fg3m = db.Column(db.Float)
+
+    efg_pct = db.Column(db.Float)
+    ts_pct = db.Column(db.Float)
+    ortg = db.Column(db.Float)
+    drtg = db.Column(db.Float)
+
 
     def __init__(self, season, is_regular):
         self.season, self.is_regular = (season, is_regular)
@@ -85,8 +108,10 @@ class BagPlayer(db.Model):
     input_data = db.relationship('InputData', backref='bagplayer')
 
     def __init__(self, user_id, player_id, score, salary, input_data_id, duedate,contract):
+
         self.user_id, self.player_id, self.score, self.salary, self.input_data_id, self.duedate,self.contract = (
-            user_id, player_id, score, salary, input_data_id, duedate,contract
+            user_id, player_id, score, salary, input_data_id, duedate, contract
+
         )
 
     def __repr__(self):

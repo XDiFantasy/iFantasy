@@ -1,13 +1,6 @@
 from app import db
 
 
-class InputData(db.Model):
-    __tablename__ = "input_data"
-    id = db.Column(db.Integer, primary_key=True)
-
-    def __repr__(self):
-        return "<InputData %r>" % self.id
-
 
 class BagEquip(db.Model):
     __tablename__ = "bag_equip"
@@ -109,7 +102,7 @@ class BagTrailCard(db.Model):
     time = db.Column(db.Integer)
 
     user = db.relationship('User', backref='bagtrailcard')
-    ueplayer = db.relationship('PlayerBase', backref='bagtrailcard')
+    player = db.relationship('PlayerBase', backref='bagtrailcard')
 
     def __init__(self, user_id, palyer_id, num, time):
         self.user_id, self.player_id, self.num, self.time = (
@@ -123,6 +116,8 @@ class BagTrailCard(db.Model):
 class PropUsing(db.Model):
     __tablename__ = "prop_using"
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+    # prop_id == 0:fund_card
+    # prop_id == 1:exp_card
     prop_type = db.Column(db.Integer)
     duetime = db.Column(db.DateTime)
 
