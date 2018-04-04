@@ -22,7 +22,6 @@ class PlayerBase(db.Model):
     price = db.Column(db.Integer)
     score = db.Column(db.Integer)
 
-    season = db.relationship('SeasonData', backref='playerbase')
     team = db.relationship("TeamInfo", backref='playerbase')
 
     def __init__(self, name, birthday, country, height, wieght, armspan,
@@ -85,8 +84,10 @@ class BagPlayer(db.Model):
     input_data = db.relationship('InputData', backref='bagplayer')
 
     def __init__(self, user_id, player_id, score, salary, input_data_id, duedate,contract):
-        self.user_id, self.player_id, self.score, self.salary, self.input_data_id, self.duedate,self.contract = (
-            user_id, player_id, score, salary, input_data_id, duedate,contract
+
+        self.user_id, self.palyer_id, self.score, self.salary, self.input_data_id, self.duedate,self.contract = (
+            user_id, player_id, score, salary, input_data_id, duedate, contract
+
         )
 
     def __repr__(self):
