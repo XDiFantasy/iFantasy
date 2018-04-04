@@ -60,6 +60,30 @@ class SeasonData(db.Model):
     player_id = db.Column(db.Integer, db.ForeignKey('player_base.id'))
     player = db.relationship('PlayerBase', backref='seasondata')
 
+    gp = db.Column(db.Integer)
+    min = db.Column(db.Float)
+    reb = db.Column(db.Float)
+    fg_pct = db.Column(db.Float)
+    fg3_pct = db.Column(db.Float)
+    ft_pct = db.Column(db.Float)
+
+    pts = db.Column(db.Float)
+    ast = db.Column(db.Float)
+    oreb = db.Column(db.Float)
+    dreb = db.Column(db.Float)
+    stl = db.Column(db.Float)
+    blk = db.Column(db.Float)
+    tov = db.Column(db.Float)
+    fgm = db.Column(db.Float)
+    fga = db.Column(db.Float)
+    fg3m = db.Column(db.Float)
+
+    efg_pct = db.Column(db.Float)
+    ts_pct = db.Column(db.Float)
+    ortg = db.Column(db.Float)
+    drtg = db.Column(db.Float)
+
+
     def __init__(self, season, is_regular):
         self.season, self.is_regular = (season, is_regular)
 
@@ -85,7 +109,7 @@ class BagPlayer(db.Model):
 
     def __init__(self, user_id, player_id, score, salary, input_data_id, duedate,contract):
 
-        self.user_id, self.palyer_id, self.score, self.salary, self.input_data_id, self.duedate,self.contract = (
+        self.user_id, self.player_id, self.score, self.salary, self.input_data_id, self.duedate,self.contract = (
             user_id, player_id, score, salary, input_data_id, duedate, contract
 
         )
