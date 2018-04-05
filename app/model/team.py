@@ -60,6 +60,7 @@ class SeasonData(db.Model):
     player_id = db.Column(db.Integer, db.ForeignKey('player_base.id'))
     player = db.relationship('PlayerBase', backref='seasondata')
 
+    team_name = db.Column(db.String(255))
     gp = db.Column(db.Integer)
     min = db.Column(db.Float)
     reb = db.Column(db.Float)
