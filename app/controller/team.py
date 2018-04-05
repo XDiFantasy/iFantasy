@@ -143,3 +143,4 @@ team_api.add_resource(SeasonDataApi,'/season/<int:player_id>',
 
 team_api.add_resource(DeletePlayerApi,'/delete/<int:user_id>/<int:bag_player_id>')
 
+
