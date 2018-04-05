@@ -20,7 +20,7 @@ parser.add_argument('theme_id', type=int)
 
 
 class State:
-    NoUser = "no such user", -250
+    ArgError = "arg is incorrect", -250
     NoMoney = "no enough money", -251
     OwnPlayer = "have owned the player", -252  # get piece if the player
     FailCommit = "cannot commit to db", -201
@@ -50,14 +50,14 @@ class GetRecruit(Resource):
         args = parser.parse_args()
         info = query(Recruit).get(args['user_id'])
         if info is None:
-            return rMessage(error=State.NoUser).response
+            return rMessage(error=State.ArgError).response
         delta = (datetime.datetime.now() - info.time)
         delta = datetime.timedelta(days=delta.days, seconds=delta.seconds)
         res = {'num': 3 - info.num}
         if delta.days > 0 or delta.seconds > 18000:
             res['time'] = None
         else:
-            res['time'] = str(delta)
+            res['time'] = str(datetime.timedelta(seconds=18000)-delta)
         return rMessage(res).response
 
 
@@ -201,6 +201,8 @@ class OneRecruit(Resource):
     def post(self):
         args = parser.parse_args()
         r_info = query(Recruit).get(args['user_id'])
+        if r_info is None:
+            return rMessage(error=State.ArgError).response
         u_info = r_info.user
         b_info = [player.player_id for player in u_info.bagplayer]
         delta = (datetime.datetime.now() - r_info.time)
@@ -212,7 +214,7 @@ class OneRecruit(Resource):
                 u_info.money -= 100
             else:
                 return rMessage(error=State.NoMoney).response
-        if r_info.num == 3:
+        if r_info.num == 2:
             res = getPlayer(u_info.id, b_info, 1)
             if res[1] == State.OwnPlayer:
                 res = toPiece(u_info.id, res[0])
@@ -222,7 +224,7 @@ class OneRecruit(Resource):
         else:
             res = getProp(u_info.id, b_info)
             mes = rMessage(result=res[0], code=res[1])
-        r_info.num = (r_info.num + 1) % 4
+        r_info.num = (r_info.num + 1) % 3
         try:
             commit()
         except Exception as e:
@@ -236,6 +238,8 @@ class FiveRecruie(Resource):
     def post(self):
         args = parser.parse_args()
         u_info = query(User).get(args['user_id'])
+        if u_info is None:
+            return rMessage(error=State.ArgError).response
         b_info = [player.player_id for player in u_info.bagplayer]
         if u_info.money > 400:
             u_info.money -= 400
@@ -247,8 +251,6 @@ class FiveRecruie(Resource):
             mes = rMessage(res[0], res[1])  # to piece
         else:
             mes = rMessage(result=res[0], code=res[1])  # get player
-        res2 = getProp(u_info.id, b_info)
-        mes.add('prop', res2[0])
         try:
             commit()
         except Exception as e:
@@ -263,6 +265,8 @@ class RecruitPlayer(Resource):
         args = parser.parse_args()
         user = query(User).get(args['user_id'])
         player = query(PlayerBase).get(args['player_id'])
+        if (user is None) or (player is None):
+            return rMessage(error=State.ArgError).response
         if user.money < player.price:
             return rMessage(error=State.NoMoney).response
         player_ids = [player.player_id for player in user.bagplayer]
@@ -291,9 +295,11 @@ def dataFilter(items, strs):
 class ShowPlayer(Resource):
     def get(self):
         index = parser.parse_args()['type']
-        order = [PlayerBase.id, PlayerBase.score, PlayerBase.price]
         if not index:
             index = 0
+        if index not in [0, 1, 2]:
+            return rMessage(error=State.ArgError).response
+        order = [PlayerBase.id, PlayerBase.score, PlayerBase.price]
         data = query(PlayerBase).order_by(db.desc(order[index]))
         all_ = dataFilter(data, None)
         c = dataFilter(data, 'c')
@@ -310,6 +316,8 @@ class BuyTheme(Resource):
         args = parser.parse_args()
         theme = query(Theme).get(args['theme_id'])
         user = query(User).get(args['user_id'])
+        if (user is None) or (theme is None):
+            return rMessage(error=State.ArgError).response
         if user.money < theme.price:
             return rMessage(error=State.NoMoney).response
         user.money -= theme.price
@@ -321,6 +329,7 @@ class BuyTheme(Resource):
             else:
                 player = query(PlayerBase).get(player_id)
                 data = addPlayer(user.id,player)
+                data[0]['num'] = 0
             res.append(data[0])
         try:
             commit()
