@@ -20,11 +20,17 @@ class Theme(db.Model):
     title = db.Column(db.String(255), nullable=True)
     detail = db.Column(db.String(255), nullable=True)
     price = db.Column(db.Integer, nullable=True)
+    player_one = db.Column(db.Integer, db.ForeignKey('player_base.id'), nullable=False)
+    player_two = db.Column(db.Integer, db.ForeignKey('player_base.id'), nullable=False)
+    player_three = db.Column(db.Integer, db.ForeignKey('player_base.id'), nullable=False)
 
-    def __init__(self, title, detail, price):
+    def __init__(self, title, detail, price, player_one, player_two, player_three):
         self.title = title
         self.detail = detail
         self.price = price
+        self.player_one = player_one
+        self.player_two = player_two
+        self.player_three = player_three
 
     def __repr__(self):
         return '<Theme %r>' % self.id
@@ -65,9 +71,7 @@ class FundType(db.Model):
 
 class Fund(db.Model):
     __tablename__ = 'fund'
-    __table_args__ = (
-        db.PrimaryKeyConstraint('user_id', 'fund_type_id'),
-    )
+    id = db.Column(db.Integer, primary_key=True, nullable=False, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     fund_type_id = db.Column(db.Integer, db.ForeignKey('fund_type.id'))
     
