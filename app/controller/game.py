@@ -337,7 +337,9 @@ game_api.add_resource(GameApi,'/game')
 game_api.add_resource(GameResultApi,'/game_result/<int:user_id>')
 
 matchThread = MatchThread()
+matchThread.setDaemon(True)
 processTaskThread = ProcessTasksThread()
+processTaskThread.setDaemon(True)
 
 matchThread.start()
 processTaskThread.start()
