@@ -4,7 +4,7 @@ class Strategy(db.Model):
     __tablename__ = "strategy"
 
     id = db.Column(db.Integer, primary_key=True)
-    intro = db.Column(Text(512))
+    intro = db.Column(db.Text(512))
     sg_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
     pg_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
     sf_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
@@ -37,7 +37,7 @@ class AttrCh(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     comment = db.Column(db.String(50))
-    order = db.Column(db.String(100),default='fg_pct - three_pt_pct - fta_pct - oreb_pct - dreb_pct - ast_pct - tov_pct - stl_pct - blk_pct - pf_pct')
+    order = db.Column(db.String(200),default='fg_pct - three_pt_pct - fta_pct - oreb_pct - dreb_pct - ast_pct - tov_pct - stl_pct - blk_pct - pf_pct')
     fg_pct = db.Column(db.FLOAT,default=0)
     three_pt_pct = db.Column(db.FLOAT,default=0)
     fta_pct = db.Column(db.FLOAT,default=0)
