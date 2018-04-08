@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource,reqparse
-from app.model import User, UserGame, LineUp, BagPlayer, UserMatch, InputData, Strategy
+from app.model import User, UserGame, LineUp, BagPlayer, UserMatch, InputData, OStrategy, DStrategy
 from app import db
 import threading
 import time
@@ -97,9 +97,20 @@ class GameInputData:
         self.__result = {
             colName : getattr(input_data,colName) for colName in self.__colNames
         }
-def net(players):
+    def updateAttr(self, attr):
+        not_in = ('pts','p_m')
+        not_pct = ('fta','tov','stl','blk','pf')
+        for colName in self.__colNames:
+            if colName not in not_in:
+                if colName in not_pct:
+                    self.__result[colName] *= 1+ getattr(colName,attr)
+                else:
+                    self.__result[colName] += getattr(colName,attr)
+    
+
+def net(players1,players2):
     '''
-        players : [[user1's players],[user2's players]]
+        players : {pos:GameInputData}
     '''
     return GameResult(), GameResult()
 
@@ -110,50 +121,59 @@ class GameThread(threading.Thread):
         threading.Thread.__init__(self)
         self.matcher1 = matcher1
         self.matcher2 = matcher2
-    def processInputData(self):
-        for lineup in [self.lineup1, self.lineup2]:
-            strategy = Strategy.query.get(lineup.strategy_id)
-            for player,pos in zip([lineup.sf, lineup.sg, lineup.c, lineup.pf, lineup.pg],
-                ['sf','sg','c','pf','pg']):
-                pass
-
-
+        self.lineup1 = LineUp.query.filter_by(id=GlobalVar.lineups[str(self.matcher1)]).first()
+        self.lineup2 = LineUp.query.filter_by(id=GlobalVar.lineups[str(self.matcher2)]).first()
+        self.pos = ['sf','sg','c','pf','pg']
+        self.lineup1_input_data = self.getInputData(self.lineup1)
+        self.lineup2_input_data = self.getInputData(self.lineup2)
+        self.addStrategyAttr(self.lineup1, self.lineup1_input_data, self.lineup2_input_data)
+        self.addStrategyAttr(self.lineup2, self.lineup2_input_data, self.lineup1_input_data)
+        
+    def getInputData(self, lineup):
+        return {pos:GameInputData(input_data) 
+            for pos, input_data in zip(self.pos,
+                [InputData.query.filter_by(
+                    player_base_id = getattr(ppos,lineup))
+                    for ppos in self.pos
+                ])}
+    def addStrategyAttr(self, lineup, my_input_data, other_input_data):
+        ostrategy = OStrategy.query.filter_by(id = lineup.OStrategy_id).first()
+        dstrategy = DStrategy.query.filter_by(id = lineup.DStrategy_id).first()
+        if ostrategy is not None:
+            for pos in self.pos:
+                attr = getattr(pos, ostrategy)
+                data = my_input_data[pos]
+                data.updateAttr(attr)
+        if dstrategy is not None:
+            for pos in self.pos:
+                attr =getattr(pos,dstrategy)
+                data = other_input_data[pos]
+                data.updateAttr(attr)
     def mainGame(self):
         '''
         net : 
-    '''
-        def getInputData(playerId):
-            player = BagPlayer.query.filter_by(id=playerId).first()
-            input_data = InputData.query.filter_by(id=player.id).first()
-            return GameInputData(input_data)
-        def finalPlayers():
-            raw_players = [[getInputData(lineup.sf), getInputData(lineup.pf), 
-            getInputData(lineup.c), getInputData(lineup.pg), getInputData(lineup.sg)] 
-        #players = 
-            for lineup in [lineup1,lineup2] ]
-        player1Res, player2Res = net(players)
+        '''
+        player1Res, player2Res = net(self.lineup1_input_data, self.lineup2_input_data)
         return player1Res, player2Res
-    def getLineups(self):
-        matcher1 = self.matcher1
-        matcher2 = self.matcher2
-        lineup1 = LineUp.query.filter_by(id=GlobalVar.lineups[str(matcher1)]).first()
-        lineup2 = LineUp.query.filter_by(id=GlobalVar.lineups[str(matcher2)]).first()
-        if not lineup1 and not lineup2:
-            GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.ERROR))
-            GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.ERROR))
-            return None
-        if not lineup1 and lineup2:
-            GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.ERROR))
-            GlobalVar.tasks.put(AddInMatchersTask(matcher2.user))
-            GlobalVar.tasks.put(ModifyStateTask(str(matcher2),GameMessage.MATCHING))
-            return None
-        if not lineup2 and lineup1:
-            GlobalVar.tasks.put(ModifyStateTask(str(matcher2),GameMessage.ERROR))
-            GlobalVar.tasks.put(AddInMatchersTask(matcher1.user))
-            GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.MATCHING))
-            return None
-        self.lineup1 = lineup1
-        self.lineup2 = lineup2
+    # def getLineups(self):
+    #     matcher1 = self.matcher1
+    #     matcher2 = self.matcher2
+    #     lineup1 = self.lineup1
+    #     lineup2 = self.lineup2
+    #     if not lineup1 and not lineup2:
+    #         GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.ERROR))
+    #         GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.ERROR))
+    #         return None
+    #     if not lineup1 and lineup2:
+    #         GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.ERROR))
+    #         GlobalVar.tasks.put(AddInMatchersTask(matcher2.user))
+    #         GlobalVar.tasks.put(ModifyStateTask(str(matcher2),GameMessage.MATCHING))
+    #         return None
+    #     if not lineup2 and lineup1:
+    #         GlobalVar.tasks.put(ModifyStateTask(str(matcher2),GameMessage.ERROR))
+    #         GlobalVar.tasks.put(AddInMatchersTask(matcher1.user))
+    #         GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.MATCHING))
+    #         return None
     def writeResult(self, player1Res, player2Res):
         matcher1 = self.matcher1
         matcher2 = self.matcher2
@@ -166,16 +186,14 @@ class GameThread(threading.Thread):
         db.session.add(userGame1)
         db.session.add(userGame2)
         db.session.commit()
-        GlobalVar.tasks.put(AddInResultsTask(str(matcher1),player1Res))
-        GlobalVar.tasks.put(AddInResultsTask(str(matcher2),player2Res))
         
-        GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.DONE))
-        GlobalVar.tasks.put(ModifyStateTask(str(matcher2),GameMessage.DONE))
     def run(self):
-        lineups = self.getLineups()
-        if lineups is not None:
-            player1Res, player2Res = mainGame(*lineups)
-            self.writeResult(player1Res, player2Res)
+        player1Res, player2Res = self.mainGame()
+        self.writeResult(player1Res, player2Res)
+        GlobalVar.tasks.put(AddInResultsTask(str(self.matcher1),player1Res))
+        GlobalVar.tasks.put(AddInResultsTask(str(self.matcher2),player2Res))
+        GlobalVar.tasks.put(ModifyStateTask(str(self.matcher1),GameMessage.DONE))
+        GlobalVar.tasks.put(ModifyStateTask(str(self.matcher2),GameMessage.DONE))
         
   
 

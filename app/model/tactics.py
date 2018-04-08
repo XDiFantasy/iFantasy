@@ -1,7 +1,7 @@
 from app import db
 
-class Strategy(db.Model):
-    __tablename__ = "strategy"
+class OStrategy(db.Model):
+    __tablename__ = "ostrategy"
 
     id = db.Column(db.Integer, primary_key=True)
     intro = db.Column(db.Text(512))
@@ -10,26 +10,35 @@ class Strategy(db.Model):
     sf_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
     pf_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
     c_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
-    v_sg_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
-    v_pg_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
-    v_sf_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
-    v_pf_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
-    v_c_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
-
+   
     sg = db.relationship('AttrCh',foreign_keys=sg_id)
     sf = db.relationship('AttrCh',foreign_keys=sf_id)
     pg = db.relationship('AttrCh',foreign_keys=pg_id)
     pf = db.relationship('AttrCh',foreign_keys=pf_id)
     c = db.relationship('AttrCh',foreign_keys=c_id)
-    v_sg = db.relationship('AttrCh',foreign_keys=v_sg_id)
-    v_pg = db.relationship('AttrCh',foreign_keys=v_pg_id)
-    v_sf = db.relationship('AttrCh',foreign_keys=v_sf_id)
-    v_pf = db.relationship('AttrCh',foreign_keys=v_pf_id)
-    v_c = db.relationship('AttrCh',foreign_keys=v_c_id)
+
+    def __repr__(self):
+        return '<oOStrategy %r>' % self.id
+class DStrategy(db.Model):
+    __tablename__ = "dstrategy"
+
+    id = db.Column(db.Integer, primary_key=True)
+    intro = db.Column(db.Text(512))
+    sg_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
+    pg_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
+    sf_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
+    pf_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
+    c_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
+   
+    sg = db.relationship('AttrCh',foreign_keys=sg_id)
+    sf = db.relationship('AttrCh',foreign_keys=sf_id)
+    pg = db.relationship('AttrCh',foreign_keys=pg_id)
+    pf = db.relationship('AttrCh',foreign_keys=pf_id)
+    c = db.relationship('AttrCh',foreign_keys=c_id)
 
 
     def __repr__(self):
-        return "<Strategy %r>" % self.id
+        return "<DStrategy %r>" % self.id
 
 
 class AttrCh(db.Model):

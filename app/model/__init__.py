@@ -2,7 +2,7 @@ from .activity import Theme, Vip, VipCard, Fund, FundType
 from .bag import BagEquip, BagPiece, BagProp, PropUsing,Equip,Piece,BagTrailCard
 from .chat import Friend
 from .game import UserGame, UserMatch, InputData
-from .tactics import Strategy, AttrCh
+from .tactics import OStrategy, AttrCh,DStrategy
 from .team import PlayerBase,TeamInfo, SeasonData, BagPlayer, LineUp
 from .user import User
 from .recruit import Recruit

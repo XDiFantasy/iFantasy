@@ -59,6 +59,10 @@ class TestData:
                 'draft',self.teams[random.randint(0,len(self.teams)-1)].id,10,self.pos[index%5],None,100,100)
             self.players_pos[player.pos1].append(player)
             self.players.append(player)
+    def genInputData(self);
+        self.writePlayer()
+        for player in self.players:
+            db.session.add(InputData(player.id,*([0]*12)))
     # def genLineup(self):
     #     writeUser()
     #     writeTeam()
