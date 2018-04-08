@@ -102,8 +102,8 @@ class Auth:
 
 
 class UserError:
-    ILLEGAL_USER =  "Illegal user", -3
-    AUTH_FAILED =  "Authentication Failed", -3
+    ILLEGAL_USER = "Illegal user", -3
+    AUTH_FAILED = "Authentication Failed", -3
 
 
 class VerificationApi(Resource):
@@ -122,11 +122,9 @@ class VerificationApi(Resource):
         if res == 200:
             user = query(User).filter_by(tel=phone).first()
             if not user:
-                user.tel = phone
+                user = User(None, phone, None, None, None, None);
                 user.logintoken = Auth.generateTempToken(user)
                 add(user)
-            elif not user.logintoken:
-                user.logintoken = Auth.generateTempToken(user)
                 try:
                     commit()
                     msg = Message(user.user2dict(), None, 201)
@@ -230,7 +228,6 @@ class LogoutApi(Resource):
         user = query(User).get(user_id)
         if not user:
             return Message(*UserError.ILLEGAL_USER).response
-        user.logintoken = None
         user.accesstoken = None
         try:
             commit()
