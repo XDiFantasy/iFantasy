@@ -158,8 +158,13 @@ class UsingTrailCardApi(Resource):
 
 #列出bag里的equip
 class BagEquipApi(Resource):
-    def get(self, user_id):
-        data = query(BagEquip).filter_by(user_id=user_id).all()
+    def get(self, user_id,type):
+        #若type == 0，查询三种装备。
+        if type == 0:
+            data = query(BagEquip).filter_by(user_id = user_id).all()
+        else:
+            data = query(BagEquip).filter_by(user_id = user_id,equip_type = type).all()
+
         if data is None or len(data) == 0:
             return BagMessage(None, *BagError.NO_EQUIP).response
 
@@ -179,6 +184,7 @@ class BagEquipApi(Resource):
 class UsingEquipApi(Resource):
     def post(self, user_id, equip_id):
         pass
+
 
 #列出bag里的prop
 class BagPropApi(Resource):
@@ -236,7 +242,7 @@ bag_api.add_resource(BagPieceApi,'/piecelist/userid=<int:user_id>')
 bag_api.add_resource(UsingPieceApi,'/usingpiece/userid=<int:user_id>/playerid=<int:player_id>')
 bag_api.add_resource(BagTrailCardApi,'/trailcardlist/userid=<int:user_id>')
 bag_api.add_resource(UsingTrailCardApi,'/usingtrailcard/userid=<int:user_id>/playerid=<int:player_id>')
-bag_api.add_resource(BagEquipApi,'/equiplist/userid=<int:user_id>')
+bag_api.add_resource(BagEquipApi,'/equiplist/userid=<int:user_id>/type=<int:type>')
 bag_api.add_resource(UsingEquipApi,'/usingequip/userid=<int:user_id>/equipid=<int:equip_id>')
 bag_api.add_resource(BagPropApi,'/proplist/userid=<int:user_id>')
 bag_api.add_resource(UsingPropApi,'/usingprop/userid=<int:user_id>/propid=<int:prop_type>')

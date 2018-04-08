@@ -8,9 +8,8 @@ class BagEquip(db.Model):
         db.PrimaryKeyConstraint('user_id', 'equip_id'),
     )
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-
     equip_id = db.Column(db.Integer, db.ForeignKey('equip.id'))
-
+    equip_type = db.Column(db.Integer, db.ForeignKey('equip.type'))
     num = db.Column(db.Integer)
 
     user = db.relationship("User", backref='bagequip')
@@ -26,9 +25,11 @@ class BagEquip(db.Model):
 class Equip(db.Model):
     __tablename__ = 'equip'
     id = db.Column(db.Integer, primary_key=True)
+    #type = 1,2,3：coat,pants,shoes
+    type = db.Column(db.Integer)
     name = db.Column(db.String(45))
+    #一件装备影响一种attr_ch
     attr_ch_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
-
     attr_ch = db.relationship('AttrCh', backref="equip")
 
     def __init__(self, name, attr_ch_id):
