@@ -49,11 +49,18 @@ class GetRecruit(Resource):
     def get(self):
         args = parser.parse_args()
         user = query(User).get(args['user_id'])
-        info = query(Recruit).get(args['user_id'])
         if user is None:
                 return rMessage(error=State.ArgError).response
+        info = query(Recruit).get(args['user_id'])
         if info is None:
             info = Recruit(user.id,0,datetime.datetime.now())
+            add(info)
+            try:
+                commit()
+            except Exception as e:
+                rollback()
+                print(e)
+                return rMessage(error=State.FailCommit).response
         delta = (datetime.datetime.now() - info.time)
         delta = datetime.timedelta(days=delta.days, seconds=delta.seconds)
         res = {'num': 3 - info.num}
