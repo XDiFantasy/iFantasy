@@ -1,5 +1,5 @@
 from flask import Blueprint
-from flask_restful import Api, Resource
+from flask_restful import Api, Resource,reqparse
 from app.model import BagPlayer, SeasonData, User,LineUp,TeamInfo
 from app.controller import Message
 from app import db
@@ -7,6 +7,15 @@ from app import db
 team_bp = Blueprint("team_bp", __name__)
 team_api = Api(team_bp)
 
+'''
+ 返回球员的位置
+'''
+def get_pos(bag_player):
+    pos = []
+    pos.append(bag_player.player.pos1)
+    if bag_player.player.pos2:
+        pos.append(bag_player.player.pos2)
+    return pos
 
 # 错误码 800-899
 class TeamError:
@@ -122,6 +131,16 @@ class SeasonDataApi(Resource):
 # 创建阵容
 class AddLineupApi(Resource):
 
+    '''
+     pos: c,pf,sf,pg,sg 的顺序
+    '''
+
+    parser = reqparse.RequestParser()
+    parser.add_argument("user_id",type=int)
+    parser.add_argument("team_id",type=int)
+    parser.add_argument("select_player",type=list)
+
+
     def get(self,user_id):
         data = BagPlayer.query.filter_by(user_id=user_id).all()
         if data is None or len(data) == 0:
@@ -156,8 +175,31 @@ class AddLineupApi(Resource):
         return TeamMessage(result=res).response
 
     def post(self):
-        # TODO：创建阵容
-        pass
+        args = self.parser.parse_args(strict=True)
+
+        user_id = args['user_id']
+        team_id = args['team_id']
+        select_player = args['select_player']
+        if select_player is None :
+            return TeamMessage(error="未选中任何球员",state=-880).response
+        if len(select_player) < 5:
+            return TeamMessage(error="球员未满5人,无法组建球队",state=-845).response
+        if len(select_player) > 5:
+            return TeamMessage(error="球员只能选5人，不能多选",state=-850).response
+
+        player_1 = BagPlayer.query.filter_by(id=select_player[0]).first()
+        player_2 = BagPlayer.query.filter_by(id=select_player[1]).first()
+        player_3 = BagPlayer.query.filter_by(id=select_player[2]).first()
+        player_4 = BagPlayer.query.filter_by(id=select_player[3]).first()
+        player_5 = BagPlayer.query.filter_by(id=select_player[4]).first()
+
+        if player_1 is None or player_2 is None or player_3 is None or player_4 is None or player_5 is None:
+            return TeamMessage(error="无此球员信息",state=-851).response
+
+
+        # lineup = LineUp(user_id=user_id,team_id=team_id)
+
+
 
 # 获取用户阵容列表信息
 class LineUpListApi(Resource):
