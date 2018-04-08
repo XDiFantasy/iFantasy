@@ -102,8 +102,8 @@ class Auth:
 
 
 class UserError:
-    ILLEGAL_USER = None, "Illegal user", -3
-    AUTH_FAILED = None, "Authentication Failed", -3
+    ILLEGAL_USER =  "Illegal user", -3
+    AUTH_FAILED =  "Authentication Failed", -3
 
 
 class VerificationApi(Resource):

@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_restful import Api, Resource,reqparse
-from app.model import User, UserGame, LineUp, BagPlayer, UserMatch
+from app.model import User, UserGame, LineUp, BagPlayer, UserMatch, InputData, Strategy
 from app import db
 import threading
 import time
@@ -25,6 +25,7 @@ class GameMessage(Message):
     MATCHING = 'Matching'
     DONE = 'Done'
     ERROR = 'Error'
+    MATCHED = 'Matched'
 
     def __init__(self,result = None, error='', state=0):
         super(GameMessage,self).__init__(result,error,state)
@@ -77,6 +78,7 @@ class Rank:
         db.session.add(userMatch)
         db.session.commit()
         self.scores[user.id] = new_score  
+
 class GlobalVar:
     results = {}
     matchers = defaultdict(lambda : Queue(-1))
@@ -84,6 +86,7 @@ class GlobalVar:
     tasks = Queue(-1)
     lineups = {}
     rank = Rank()
+    gameRooms = {}
 
 class GameInputData:
     __colNames = (
@@ -99,20 +102,7 @@ def net(players):
         players : [[user1's players],[user2's players]]
     '''
     return GameResult(), GameResult()
-def mainGame(lineup1, lineup2):
-    '''
-        net : 
-    '''
-    def getInputData(playerId):
-        player = BagPlayer.query.filter_by(id=playerId).first()
-        return GameInputData(player.input_data)
-    players = [[getInputData(lineup.sf), getInputData(lineup.pf), 
-        getInputData(lineup.c), getInputData(lineup.pg), getInputData(lineup.sg)] 
-        for lineup in [lineup1,lineup2] ]
-    
-    
-    player1Res, player2Res = net(players)
-    return player1Res, player2Res
+
     
 
 class GameThread(threading.Thread):
@@ -120,6 +110,29 @@ class GameThread(threading.Thread):
         threading.Thread.__init__(self)
         self.matcher1 = matcher1
         self.matcher2 = matcher2
+    def processInputData(self):
+        for lineup in [self.lineup1, self.lineup2]:
+            strategy = Strategy.query.get(lineup.strategy_id)
+            for player,pos in zip([lineup.sf, lineup.sg, lineup.c, lineup.pf, lineup.pg],
+                ['sf','sg','c','pf','pg']):
+                pass
+
+
+    def mainGame(self):
+        '''
+        net : 
+    '''
+        def getInputData(playerId):
+            player = BagPlayer.query.filter_by(id=playerId).first()
+            input_data = InputData.query.filter_by(id=player.id).first()
+            return GameInputData(input_data)
+        def finalPlayers():
+            raw_players = [[getInputData(lineup.sf), getInputData(lineup.pf), 
+            getInputData(lineup.c), getInputData(lineup.pg), getInputData(lineup.sg)] 
+        players = 
+            for lineup in [lineup1,lineup2] ]
+        player1Res, player2Res = net(players)
+        return player1Res, player2Res
     def getLineups(self):
         matcher1 = self.matcher1
         matcher2 = self.matcher2
@@ -139,7 +152,8 @@ class GameThread(threading.Thread):
             GlobalVar.tasks.put(AddInMatchersTask(matcher1.user))
             GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.MATCHING))
             return None
-        return lineup1, lineup2
+        self.lineup1 = lineup1
+        self.lineup2 = lineup2
     def writeResult(self, player1Res, player2Res):
         matcher1 = self.matcher1
         matcher2 = self.matcher2
@@ -154,15 +168,16 @@ class GameThread(threading.Thread):
         db.session.commit()
         GlobalVar.tasks.put(AddInResultsTask(str(matcher1),player1Res))
         GlobalVar.tasks.put(AddInResultsTask(str(matcher2),player2Res))
+        
         GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.DONE))
         GlobalVar.tasks.put(ModifyStateTask(str(matcher2),GameMessage.DONE))
     def run(self):
         lineups = self.getLineups()
-        if lineups is None:
-            pass
-        player1Res, player2Res = mainGame(*lineups)
-        self.writeResult(player1Res, player2Res)
+        if lineups is not None:
+            player1Res, player2Res = mainGame(*lineups)
+            self.writeResult(player1Res, player2Res)
         
+  
 
 class ProcessTasksThread(threading.Thread):
     def __init__(self):
@@ -188,6 +203,7 @@ class MatchThread(threading.Thread):
                         matchers.task_done()
                         matcher2 = matchers.get()
                         matchers.task_done()
+                        GlobalVar.tasks.put(AddInGameRoomTask(matcher1, matcher2))
                         GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.GAMING))
                         GlobalVar.tasks.put(ModifyStateTask(str(matcher2),GameMessage.GAMING))
                         GlobalVar.tasks.put(GameTask(matcher1,matcher2))
@@ -266,7 +282,21 @@ class DelResultTask(Task):
     def __init__(self, user):
         self.user = user
     def run(self):
-        del GlobalVar.results[str(self.user)]       
+        del GlobalVar.results[str(self.user)]    
+class AddInGameRoomTask(Task):
+    def __init__(self, matcher1, matcher2):
+        self.matcher1 = matcher1
+        self.matcher2 = matcher2
+    def run(self):
+        GlobalVar.gameRooms[str(self.matcher1)] = self.matcher2
+        GlobalVar.gameRooms[str(self.matcher2)] = self.matcher1
+class DelGameRoomTask(Task):
+    def __init__(self, matcher1, matcher2):
+        self.matcher1 = matcher1
+        self.matcher2 = matcher2
+    def run(self):
+        del GlobalVar.gameRooms[str(self.matcher1)]
+        del GlobalVar.gameRooms[str(self.matcher2)]
 
 
 class GameApi(Resource):
@@ -307,6 +337,7 @@ class GameResultApi(Resource):
             if userState is None:
                 return GameMessage(None, *GameError.GAME_FAILED).response
             elif userState == GameMessage.GAMING:
+                
                 return GameMessage(GameMessage.GAMING,state=700).response
             elif userState == GameMessage.MATCHING:
                 return GameMessage(GameMessage.MATCHING,state=700).response
@@ -318,6 +349,9 @@ class GameResultApi(Resource):
         gameResult = GlobalVar.results[str(user)]
         db.session.add(UserGame(user_id, datetime.datetime.now(), **gameResult.result))
         db.session.commit()
+        matcher2 = GlobalVar.gameRooms[str(user)]
+        matcher1 = GlobalVar.gameRooms[str(matcher2)]
+        GlobalVar.tasks.put(DelGameRoomTask(matcher1, matcher2))
         return  GameMessage(gameResult.result,state=700).response
     def delete(self, user_id):
         global GlobalVar
@@ -328,13 +362,24 @@ class GameResultApi(Resource):
         GlobalVar.tasks.put(ModifyStateTask(str(user),GameMessage.DONE))
         return GameMessage(state=700).response
 
-        
+class GameMatchedApi(Resource):
+    def get(self, user_id):
+        user = User.query.filter_by(id = user_id).first()
+        if not user:
+            return GameMessage(None,*UserError.ILLEGAL_USER).response
+        user_state = GlobalVar.userStates[str(user)]
+        if user_state == GameMessage.GAMING or \
+            user_state == GameMessage.DONE:
+            #返回LineUp信息
+            other = GlobalVar.gameRooms[str(user)]
+            return GameMessage('other linup',state=700).response
+        return GameMessage(GameMessage.MATCHING,state=700).response
 
-        
-        
-   
+
+       
 game_api.add_resource(GameApi,'/game')
 game_api.add_resource(GameResultApi,'/game_result/<int:user_id>')
+game_api.add_resource(GameMatchedApi,'/game_matched/<int:user_id>')
 
 matchThread = MatchThread()
 matchThread.setDaemon(True)

@@ -15,7 +15,8 @@ def make_shell_context():
     PlayerBase=PlayerBase,TeamInfo=TeamInfo,User=User, LineUp=LineUp
     )
 
-app = create_app("develop")
+app= create_app("develop")
+
 manager = Manager(app)
 migrate = Migrate(app, db)
 manager.add_command('db', MigrateCommand)
