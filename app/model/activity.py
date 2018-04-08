@@ -18,19 +18,15 @@ class Theme(db.Model):
     __tablename__ = 'theme'
     id = db.Column(db.Integer, primary_key=True, nullable=False, autoincrement=True)
     title = db.Column(db.String(255), nullable=True)
-    detail = db.Column(db.String(255), nullable=True)
+    detail = db.Column(db.Text(512), nullable=True)
     price = db.Column(db.Integer, nullable=True)
-    player_one = db.Column(db.Integer, db.ForeignKey('player_base.id'), nullable=False)
-    player_two = db.Column(db.Integer, db.ForeignKey('player_base.id'), nullable=False)
-    player_three = db.Column(db.Integer, db.ForeignKey('player_base.id'), nullable=False)
+    player_one_id = db.Column(db.Integer, db.ForeignKey('player_base.id'), nullable=False)
+    player_two_id = db.Column(db.Integer, db.ForeignKey('player_base.id'), nullable=False)
+    player_three_id = db.Column(db.Integer, db.ForeignKey('player_base.id'), nullable=False)
 
-    def __init__(self, title, detail, price, player_one, player_two, player_three):
-        self.title = title
-        self.detail = detail
-        self.price = price
-        self.player_one = player_one
-        self.player_two = player_two
-        self.player_three = player_three
+    player_one = db.relationship('PlayerBase',foreign_keys=player_one_id)
+    player_two = db.relationship('PlayerBase',foreign_keys=player_two_id)
+    player_three = db.relationship('PlayerBase',foreign_keys=player_three_id)
 
     def __repr__(self):
         return '<Theme %r>' % self.id
@@ -60,10 +56,6 @@ class FundType(db.Model):
     id = db.Column(db.Integer, primary_key=True, nullable=False, autoincrement=True)
     price = db.Column(db.Integer, nullable=True, default=0)
     rate = db.Column(db.Float, nullable=True, default=1)
-
-    def __init__(self,price, rate):
-        self.price = price
-        self.rate = rate
 
     def __repr__(self):
         return '<FundType %r>' % self.id

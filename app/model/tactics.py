@@ -4,7 +4,7 @@ class Strategy(db.Model):
     __tablename__ = "strategy"
 
     id = db.Column(db.Integer, primary_key=True)
-    intro = db.Column(Text(512))
+    intro = db.Column(db.Text(512))
     sg_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
     pg_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
     sf_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))

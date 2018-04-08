@@ -1,7 +1,7 @@
 from flask_migrate import Migrate, MigrateCommand
 from flask_script import Manager, Shell
 
-from app import create_app, db
+from app import create_app, db, appbuilder
 from app.model import * #SeasonTheme, Vip, VipCard, Fund, FundType,BagEquip, BagPiece, BagPlayer, BagProp, PropUsing, InputData,Equip,Piece,BagTrailCard,Friend, GameHistory, UserGame,Strategy, AttrCh,PlayerBase,TeamInfo,User, LineUp
 
 def make_shell_context():
@@ -15,7 +15,8 @@ def make_shell_context():
     PlayerBase=PlayerBase,TeamInfo=TeamInfo,User=User, LineUp=LineUp
     )
 
-app = create_app("develop")
+app= create_app("develop")
+
 manager = Manager(app)
 migrate = Migrate(app, db)
 manager.add_command('db', MigrateCommand)
