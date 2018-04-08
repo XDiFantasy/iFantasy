@@ -118,7 +118,7 @@ class VerificationApi(Resource):
         code = args['code']
         zone = args['zone']
 
-        res = MobSMS(sms_key).verify_sms_code(zone, phone, code)
+        res = MobSMS(sms_key).verify_sms_code(zone, phone, code, debug=True)
         if res == 200:
             user = query(User).filter_by(tel=phone).first()
             if not user:
