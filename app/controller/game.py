@@ -129,7 +129,7 @@ class GameThread(threading.Thread):
         def finalPlayers():
             raw_players = [[getInputData(lineup.sf), getInputData(lineup.pf), 
             getInputData(lineup.c), getInputData(lineup.pg), getInputData(lineup.sg)] 
-        players = 
+        #players = 
             for lineup in [lineup1,lineup2] ]
         player1Res, player2Res = net(players)
         return player1Res, player2Res
