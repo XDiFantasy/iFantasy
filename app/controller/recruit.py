@@ -303,11 +303,9 @@ class ShowPlayer(Resource):
         data = query(PlayerBase).order_by(db.desc(order[index]))
         all_ = dataFilter(data, None)
         c = dataFilter(data, 'c')
-        pf = dataFilter(data, 'pf')
-        sf = dataFilter(data, 'sf')
-        sg = dataFilter(data, 'sg')
-        pg = dataFilter(data, 'pg')
-        res = {'all': all_, 'c': c, 'pf': pf, 'sf': sf, 'sg': sg, 'pg': pg}
+        f = dataFilter(data, 'f')
+        g = dataFilter(data, 'g')
+        res = {'all': all_, 'c': c, 'pf': f, 'sf': f, 'sg': g, 'pg': g}
         return rMessage(res).response
 
 
