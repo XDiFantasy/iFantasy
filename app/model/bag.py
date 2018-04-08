@@ -31,8 +31,6 @@ class Equip(db.Model):
 
     attr_ch = db.relationship('AttrCh', backref="equip")
 
-    def __init__(self, name, attr_ch_id):
-        self.name, self.attr_ch_id = (name, attr_ch_id)
 
     def __repr__(self):
         return "<Equip %r, %r, %r>" % (self.id, self.name, self.attr_ch_id)
