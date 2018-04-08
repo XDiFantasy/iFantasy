@@ -33,7 +33,7 @@ class PlayerBase(db.Model):
                                                                           team_id, cloth_num, pos1, pos2, price, score)
 
     def __repr__(self):
-        return "<PlayerBase %r>" % self.id
+        return "<PlayerBase %r : %r>" % (self.id, self.name)
 
 
 class TeamInfo(db.Model):
@@ -60,6 +60,7 @@ class SeasonData(db.Model):
     player_id = db.Column(db.Integer, db.ForeignKey('player_base.id'))
     player = db.relationship('PlayerBase', backref='seasondata')
 
+    team_name = db.Column(db.String(255))
     gp = db.Column(db.Integer)
     min = db.Column(db.Float)
     reb = db.Column(db.Float)
@@ -99,19 +100,18 @@ class BagPlayer(db.Model):
     player_id = db.Column(db.Integer, db.ForeignKey('player_base.id'))
     score = db.Column(db.Integer)
     salary = db.Column(db.Integer)
-    input_data_id = db.Column(db.Integer, db.ForeignKey('input_data.id'))
+    #input_data_id = db.Column(db.Integer, db.ForeignKey('input_data.id'))
     duedate = db.Column(db.DateTime)
     contract = db.Column(db.String(255))
 
     user = db.relationship('User', backref='bagplayer')
     player = db.relationship('PlayerBase', backref='bagplayer')
-    input_data = db.relationship('InputData', backref='bagplayer')
+    #input_data = db.relationship('InputData', backref='bagplayer')
 
-    def __init__(self, user_id, player_id, score, salary, input_data_id, duedate,contract):
+    def __init__(self, user_id, player_id, score, salary, duedate,contract):
 
-        self.user_id, self.player_id, self.score, self.salary, self.input_data_id, self.duedate,self.contract = (
-            user_id, player_id, score, salary, input_data_id, duedate, contract
-
+        self.user_id, self.player_id, self.score, self.salary,  self.duedate,self.contract = (
+            user_id, player_id, score, salary, duedate, contract
         )
 
     def __repr__(self):
