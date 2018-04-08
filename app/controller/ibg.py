@@ -23,7 +23,7 @@ class FundTypeModelView(ModelView):
     ]
 class ThemeModelView(ModelView):
     datamodel = SQLAInterface(Theme)
-    list_column = [
+    list_columns = [
         'title', 'price'
     ]
     show_fieldsets = [
@@ -131,19 +131,6 @@ class StrategyModelView(ModelView):
         ]})
     ]
 
-appbuilder.add_view(AttrChModelView,'属性')
-appbuilder.add_view(EquipModelView,'装备')
-appbuilder.add_view(StrategyModelView,'策略')
-appbuilder.add_view(ThemeModelView, '主题')
-appbuilder.add_view(FundTypeModelView, '基金')
 
-"""
-    Application wide 404 error handler
-"""
-@appbuilder.app.errorhandler(404)
-def page_not_found(e):
-    return render_template('404.html', base_template=appbuilder.base_template, appbuilder=appbuilder), 404
-
-db.create_all()
 
 
