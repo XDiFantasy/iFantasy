@@ -1,9 +1,12 @@
-from flask import Flask, request
+from flask import Flask, request, render_template
 from flask_sqlalchemy import SQLAlchemy
 from .config import config
+from flask_appbuilder import AppBuilder
 
 
 db = SQLAlchemy()
+from app.controller import MyIndexView
+appbuilder = AppBuilder(indexview=MyIndexView)
 api_version = 'v1'
 
 
@@ -13,6 +16,9 @@ def create_app(config_name):
     print(app.config['SQLALCHEMY_DATABASE_URI'])
     db.app = app
     db.init_app(app)
+    appbuilder.app = app
+    appbuilder.init_app(app,db.session)
+
     
     from app.controller import Auth,UserError,Message
     from app.model import User
@@ -33,6 +39,24 @@ def create_app(config_name):
     app.register_blueprint(activity_bp, url_prefix="/api/v1/activity")
     app.register_blueprint(chat_bp, url_prefix="/api/v1/chat")
     app.register_blueprint(recruit_bp, url_prefix="/api/v1/recruit")
+
+    from app.controller.ibg import AttrChModelView, EquipModelView, StrategyModelView, ThemeModelView, FundTypeModelView
+    appbuilder.add_view(AttrChModelView,'属性')
+    appbuilder.add_view(EquipModelView,'装备')
+    appbuilder.add_view(StrategyModelView,'策略')
+    appbuilder.add_view(ThemeModelView, '主题')
+    appbuilder.add_view(FundTypeModelView, '基金')
+
+    """
+        Application wide 404 error handler
+    """
+    @appbuilder.app.errorhandler(404)
+    def page_not_found(e):
+        return render_template('404.html', base_template=appbuilder.base_template, appbuilder=appbuilder), 404
+
+    db.create_all()
+
+    
 
     return app
 

@@ -79,8 +79,8 @@ class TestData:
 
 if __name__ == '__main__':
     testData = TestData()
-    #testData.writeUser()
-    #testData.writeTeam()
+    testData.writeUser()
+    testData.writeTeam()
     testData.writePlayer()
         
     
