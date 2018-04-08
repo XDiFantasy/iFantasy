@@ -331,7 +331,7 @@ class BuyTheme(Resource):
         user.money -= theme.price
         bag_players = [player.player_id for player in user.bagplayer]
         res = list()
-        for player_id in [theme.player_one,theme.player_two,theme.player_three]:
+        for player_id in [theme.player_one_id,theme.player_two_id,theme.player_three_id]:
             if player_id in bag_players:
                 data = toPiece(user.id,player_id)
             else:
