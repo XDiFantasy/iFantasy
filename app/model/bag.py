@@ -118,7 +118,7 @@ class PropUsing(db.Model):
     __table_args__ = (
         db.PrimaryKeyConstraint('user_id', 'prop_type'),
     )
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     # prop_id == 0:fund_card
     # prop_id == 1:exp_card
     prop_type = db.Column(db.Integer)
