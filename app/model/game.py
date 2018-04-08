@@ -48,6 +48,7 @@ class UserMatch(db.Model):
 class InputData(db.Model):
     __tablename__ = "input_data"
     id = db.Column(db.Integer, primary_key=True)
+    player_base_id = db.Column(db.Integer, db.ForeignKey('player_base.id'))
     pts = db.Column(db.Integer)
     fg_pct = db.Column(db.FLOAT)
     three_pt_pct = db.Column(db.FLOAT)
@@ -61,10 +62,10 @@ class InputData(db.Model):
     pf = db.Column(db.FLOAT)
     p_m = db.Column(db.FLOAT)
 
-    def __init__(self, pts,fg_pct, three_pt_pct, fta, oreb_pct, dreb_pct, ast_pct, tov, stl, blk, pf, p_m):
-        (self.pts, self.fg_pct, self.three_pt_pct, self.fta, self.oreb_pct, self.dreb_pct, self.ast_pct. self.tov,
+    def __init__(self, player_base_id,pts,fg_pct, three_pt_pct, fta, oreb_pct, dreb_pct, ast_pct, tov, stl, blk, pf, p_m):
+        (self.player_base_id, self.pts, self.fg_pct, self.three_pt_pct, self.fta, self.oreb_pct, self.dreb_pct, self.ast_pct. self.tov,
         self.stl, self.blk, self.pf, self.p_m) = (
-            pts, fg_pct, three_pt_pct, fta, oreb_pct, dreb_pct, ast_pct, tov, stl, blk, pf, p_m
+            player_base_id, pts, fg_pct, three_pt_pct, fta, oreb_pct, dreb_pct, ast_pct, tov, stl, blk, pf, p_m
         )
 
     def __repr__(self):

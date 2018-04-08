@@ -1,44 +1,41 @@
-from flask import Blueprint
-from flask_restful import Api, Resource, reqparse
-
-from app.controller import Message
-from app.controller.utils import MobSMS
-from ..config import sms_key
-import hashlib
-from app.config import Config
-from app.model import User
 import base64
+import hashlib
 import json
 import time
 
+from flask import Blueprint, request
+from flask_restful import Api, Resource, reqparse
+
+from app import db
+from app.config import Config
+from app.controller import Message
+from app.controller.utils import MobSMS
+from app.model import User
+from ..config import sms_key
+
 user_bp = Blueprint("user_bp", __name__)
 user_api = Api(user_bp)
-
-parse = reqparse.RequestParser()
-parse.add_argument('phone', type=str)
-parse.add_argument('code', type=str)
-parse.add_argument('zone', type=str)
+parser = reqparse.RequestParser()
+query = db.session.query
+add = db.session.add
+commit = db.session.commit
+rollback = db.session.rollback
 
 
 class Auth:
     header = {'typ': 'JWT', 'alg': 'HS256'}
     payload = {
-        'iss': 'iFantasy',
+        'iss': 'iFantasy-android',
         'exp': None,
         'name': None
     }
 
     @staticmethod
-    def createToken(user_id):
-
-        user = User.query.fileter_by(id=user_id).first()
-        if not user:
-            raise Exception(UserError.ILLEGAL_USER)
-
-        header = base64.urlsafe_b64decode(
+    def generateTempToken(user):
+        header = base64.urlsafe_b64encode(
             bytes(json.dumps(Auth.header), encoding='utf-8')
         )
-        Auth.payload['exp'], Auth.payload['name'] = str(time.time()), str(user_id)
+        Auth.payload['exp'], Auth.payload['name'] = str(time.time()), str(user.tel)
         payload = base64.urlsafe_b64encode(
             bytes(json.dumps(Auth.payload), encoding='utf-8')
         )
@@ -46,40 +43,207 @@ class Auth:
         sha256 = hashlib.sha256()
         sha256.update(header)
         sha256.update(payload)
-        sha256.update(Config.SECRET_KEY)
-        token = header + b'.' + payload + b'.' + sha256.hexdigest()
-        return token
+        sha256.update(base64.urlsafe_b64encode(bytes(Config.SECRET_KEY, encoding="utf-8")))
+        temptoken = header + b'.' + payload + b'.' + bytes(sha256.hexdigest(), encoding='utf-8')
+        return str(temptoken, encoding='utf-8')
 
     @staticmethod
-    def authToken(user_id, token):
-        user = User.query.fileter_by(id=user_id).first()
+    def generateLoginToken(user):
         if not user:
-            return False
-        if user.token == token:
-            return True
-        return False
+            return Message(None, UserError.ILLEGAL_USER).response
+
+        header = base64.urlsafe_b64encode(
+            bytes(json.dumps(Auth.header), encoding='utf-8')
+        )
+        Auth.payload['exp'], Auth.payload['name'] = str(time.time()), str(user.id)
+        payload = base64.urlsafe_b64encode(
+            bytes(json.dumps(Auth.payload), encoding='utf-8')
+        )
+        Auth.payload['exp'], Auth.payload['name'] = None, None
+        sha256 = hashlib.sha256()
+        sha256.update(header)
+        sha256.update(payload)
+        sha256.update(base64.urlsafe_b64encode(bytes(Config.SECRET_KEY, encoding="utf-8")))
+        logintoken = header + b'.' + payload + b'.' + bytes(sha256.hexdigest(), encoding='utf-8')
+        return str(logintoken, encoding='utf-8')
+
+    @staticmethod
+    def generateAccessToken(user):
+        if not user:
+            raise Exception(UserError.ILLEGAL_USER)
+
+        header = base64.urlsafe_b64encode(
+            bytes(json.dumps(Auth.header), encoding='utf-8')
+        )
+        Auth.payload['exp'], Auth.payload['name'] = str(time.time()), str(user.id)
+        payload = base64.urlsafe_b64encode(
+            bytes(json.dumps(Auth.payload), encoding='utf-8')
+        )
+        Auth.payload['exp'], Auth.payload['name'] = None, None
+        sha256 = hashlib.sha256()
+        sha256.update(header)
+        sha256.update(payload)
+        sha256.update(base64.urlsafe_b64encode(bytes(Config.SECRET_KEY, encoding="utf-8")))
+        accesstoken = header + b'.' + payload + b'.' + bytes(sha256.hexdigest(), encoding='utf-8')
+        return str(accesstoken, encoding='utf-8')
+
+    @staticmethod
+    def authLoginToken(user, logintoken):
+        return logintoken == user.logintoken
+
+    @staticmethod
+    def authAccessToken(user, accesstoken):
+        return accesstoken == user.accesstoken
+
+    @staticmethod
+    def authToken(user_id, accesstoken):
+        user = query(User).get(user_id)
+        Auth.authAccessToken(user, accesstoken)
 
 
 class UserError:
-    ILLEGAL_USER = "Illegal user", -3
-    AUTH_FAILED = "Authentication Failed", -3
+    ILLEGAL_USER =  "Illegal user", -3
+    AUTH_FAILED =  "Authentication Failed", -3
 
 
-class UserApi(Resource):
+class VerificationApi(Resource):
+    parse = reqparse.RequestParser()
+    parse.add_argument('phone', type=str)
+    parse.add_argument('code', type=str)
+    parse.add_argument('zone', type=str)
 
     def post(self):
-        args = parse.parse_args(strict=True)
+        args = self.parse.parse_args(strict=True)
         phone = args['phone']
         code = args['code']
         zone = args['zone']
 
         res = MobSMS(sms_key).verify_sms_code(zone, phone, code)
         if res == 200:
-            return Message(None, None, 200).response
+            user = query(User).filter_by(tel=phone).first()
+            if not user:
+                user.tel = phone
+                user.logintoken = Auth.generateTempToken(user)
+                add(user)
+            elif not user.logintoken:
+                user.logintoken = Auth.generateTempToken(user)
+                try:
+                    commit()
+                    msg = Message(user.user2dict(), None, 201)
+                except Exception as e:
+                    rollback()
+                    print(e)
+                    msg = Message(None, "cannot commit to db", -1)
+                return msg.response
+            return Message(user.user2dict(), None, 200).response
         elif res == 467:
             return Message(None, "请求校验验证码频繁", 467).response
         elif res == 468:
             return Message(None, "验证码错误", 468).response
 
 
-user_api.add_resource(UserApi, '/verification')
+class RegisterApi(Resource):
+    parse = reqparse.RequestParser()
+    parse.add_argument('phone', type=str)
+    parse.add_argument('nickname', type=str)
+
+    def post(self):
+        args = self.parse.parse_args(strict=True)
+        phone = args['phone']
+        nickname = args['nickname']
+        temptoken = request.headers.get('Authorization')
+
+        if temptoken:
+            user = query(User).filter_by(tel=phone).first()
+            if user and Auth.authLoginToken(user, temptoken):
+                user.accesstoken = Auth.generateAccessToken(user)
+                user.level = 1
+                user.logintoken = Auth.generateLoginToken(user)
+                user.money = 1000
+                user.nickname = nickname
+                try:
+                    commit()
+                    msg = Message(user.user2dict(), None, 200)
+                except Exception as e:
+                    rollback()
+                    print(e)
+                    msg = Message(None, "cannot commit to db", -1)
+                return msg.response
+        return Message(*UserError.AUTH_FAILED).response
+
+
+class LoginApi(Resource):
+    parse = reqparse.RequestParser()
+    parse.add_argument('phone', type=str)
+
+    def post(self):
+        args = self.parse.parse_args(strict=True)
+        phone = args['phone']
+        logintoken = request.headers.get('Authorization')
+
+        if logintoken:
+            user = query(User).filter_by(tel=phone).first()
+            if user and Auth.authLoginToken(user, logintoken):
+                user.accesstoken = Auth.generateAccessToken(user)
+                try:
+                    commit()
+                    msg = Message(user.user2dict(), None, 200)
+                except Exception as e:
+                    rollback()
+                    print(e)
+                    msg = Message(None, "cannot commit to db", -1)
+                return msg.response
+        return Message(*UserError.AUTH_FAILED).response
+
+
+class RefreshAccessTokenApi(Resource):
+    parse = reqparse.RequestParser()
+    parse.add_argument('user_id', type=int)
+
+    def post(self):
+        args = self.parse.parse_args(strict=True)
+        user_id = args['user_id']
+        logintoken = request.headers.get('Authorization')
+
+        if logintoken:
+            user = query(User).get(user_id)
+            if user and Auth.authLoginToken(user, logintoken):
+                user.accesstoken = Auth.generateAccessToken(user)
+                try:
+                    commit()
+                    msg = Message({'accesstoken': user.accesstoken}, None, 200)
+                except Exception as e:
+                    rollback()
+                    print(e)
+                    msg = Message(None, "cannot commit to db", -1)
+                return msg.response
+            return Message(*UserError.AUTH_FAILED).response
+
+
+class LogoutApi(Resource):
+    parse = reqparse.RequestParser()
+    parse.add_argument('user_id', type=int)
+
+    def post(self):
+        args = self.parse.parse_args(strict=True)
+        user_id = args['user_id']
+        user = query(User).get(user_id)
+        if not user:
+            return Message(*UserError.ILLEGAL_USER).response
+        user.logintoken = None
+        user.accesstoken = None
+        try:
+            commit()
+            msg = Message(user.user2dict(), None, 200)
+        except Exception as e:
+            rollback()
+            print(e)
+            msg = Message(None, "cannot commit to db", -1)
+        return msg.response
+
+
+user_api.add_resource(VerificationApi, '/verification')
+user_api.add_resource(RegisterApi, '/register')
+user_api.add_resource(LoginApi, '/login')
+user_api.add_resource(RefreshAccessTokenApi, '/refreshToken')
+user_api.add_resource(LogoutApi, '/logout')
