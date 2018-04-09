@@ -1,4 +1,5 @@
 from flask import jsonify
+import json
 
 class Message:
     '''
@@ -19,6 +20,9 @@ class Message:
     @property
     def response(self):
         return jsonify(self.__data)
+    @property
+    def json(self):
+        return json.dumps(self.__data)
 
 
     

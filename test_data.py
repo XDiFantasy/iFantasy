@@ -16,7 +16,7 @@ class TestData:
         self.players_pos = {
             'sg':[],'sf':[],'pg':[],'pf':[],'c':[]
         }
-        self.strategies = Strategy.query.all()
+        self.input_data = []
     def writeUser(self):
         if len(self.users) == 0:
             self.generateUsers()
@@ -34,6 +34,12 @@ class TestData:
             self.genPlayerBase()
         if self.players[0].id is None:
             db.session.add_all(self.players)
+            db.session.commit()
+    def writeInputData(self):
+        if len(self.input_data) == 0:
+            self.genInputData()
+        if self.input_data[0] is None:
+            db.session.add_all(self.input_data)
             db.session.commit()
     def genNicknames(self):
         for index in range(self.num_users):
@@ -59,11 +65,16 @@ class TestData:
                 'draft',self.teams[random.randint(0,len(self.teams)-1)].id,10,self.pos[index%5],None,100,100)
             self.players_pos[player.pos1].append(player)
             self.players.append(player)
-    def genInputData(self);
+    def genInputData(self):
         self.writePlayer()
         for player in self.players:
-            db.session.add(InputData(player.id,*([0]*12)))
-    # def genLineup(self):
+            self.input_data.append(InputData(player.id,*([0]*12)))
+    def addInputData(self):
+        players = PlayerBase.query.all()
+        for player in players:
+            db.session.add(InputData(player.id,0,0,0,0,0,0,0,0,0,0,0,0))
+        db.session.commit()
+    # def genLineup(self)
     #     writeUser()
     #     writeTeam()
     #     writePlayer()
@@ -83,10 +94,11 @@ class TestData:
 
 if __name__ == '__main__':
     testData = TestData()
-    testData.writeUser()
-    testData.writeTeam()
-    testData.writePlayer()
-        
+    # testData.writeUser()
+    # testData.writeTeam()
+    # testData.writePlayer()
+    # testData.writeInputData()
+    testData.addInputData()
     
             
 

@@ -103,7 +103,7 @@ def addPlayer(user_id, player):
     duedate = today.replace(year=today.year + 1)
     contract = '一年%d万，%d年%d月%d日签约，%d年%d月%d日到期' % (player.price, today.year,
                                                   today.month, today.day, duedate.year, duedate.month, duedate.day)
-    add(BagPlayer(user_id, player.id, player.score, player.price, None, duedate, contract))
+    add(BagPlayer(user_id, player.id, player.score, player.price, duedate, contract))
     return ({"name": player.name}, State.player)
 
 

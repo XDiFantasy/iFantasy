@@ -1,13 +1,15 @@
 from flask import Flask, request, render_template
 from flask_sqlalchemy import SQLAlchemy
-from .config import config
+from .config import config, Config
 from flask_appbuilder import AppBuilder
-
-
+import jpush
 db = SQLAlchemy()
+_jpush = jpush.JPush(Config.app_key, Config.master_secret)
+_jpush.set_logging('DEBUG')
 from app.controller import MyIndexView
 appbuilder = AppBuilder(indexview=MyIndexView)
 api_version = 'v1'
+
 
 
 def create_app(config_name):
