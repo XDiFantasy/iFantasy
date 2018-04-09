@@ -68,7 +68,7 @@ class Fund(db.Model):
     fund_type_id = db.Column(db.Integer, db.ForeignKey('fund_type.id'))
     
     user  = db.relationship('User',backref='fund')
-    fund_type = db.relationship('FundType', backref='fund')
+    fund_type = db.relationship('FundType')
 
     def __init__(self, user_id, fund_type_id):
         self.user_id = user_id

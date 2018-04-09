@@ -1,13 +1,15 @@
 from flask import Flask, request, render_template
 from flask_sqlalchemy import SQLAlchemy
-from .config import config
+from .config import config, Config
 from flask_appbuilder import AppBuilder
-
-
+import jpush
 db = SQLAlchemy()
+_jpush = jpush.JPush(Config.app_key, Config.master_secret)
+_jpush.set_logging('DEBUG')
 from app.controller import MyIndexView
 appbuilder = AppBuilder(indexview=MyIndexView)
 api_version = 'v1'
+
 
 
 def create_app(config_name):
@@ -40,10 +42,11 @@ def create_app(config_name):
     app.register_blueprint(chat_bp, url_prefix="/api/v1/chat")
     app.register_blueprint(recruit_bp, url_prefix="/api/v1/recruit")
 
-    from app.controller.ibg import AttrChModelView, EquipModelView, StrategyModelView, ThemeModelView, FundTypeModelView
+    from app.controller.ibg import AttrChModelView, EquipModelView, OStrategyModelView, DStrategyModelView, ThemeModelView, FundTypeModelView
     appbuilder.add_view(AttrChModelView,'属性')
     appbuilder.add_view(EquipModelView,'装备')
-    appbuilder.add_view(StrategyModelView,'策略')
+    appbuilder.add_view(OStrategyModelView,' 进攻策略')
+    appbuilder.add_view(DStrategyModelView,' 防守策略')
     appbuilder.add_view(ThemeModelView, '主题')
     appbuilder.add_view(FundTypeModelView, '基金')
 

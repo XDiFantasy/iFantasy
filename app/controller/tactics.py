@@ -1,6 +1,6 @@
 from flask import Blueprint
 from flask_restful import Api, Resource,reqparse
-from app.model.tactics import Strategy,AttrCh
+from app.model.tactics import OStrategy,AttrCh, DStrategy
 
 tactics_bp = Blueprint("tactics_bp", __name__)
 tactics_api = Api(tactics_bp)
@@ -58,7 +58,7 @@ class Offense_strategy_IndexAPi(Resource):
 
 class Offense_StrategyAPi(Resource):
     def get(self, strategy_id):
-        data = Strategy.query.filter_by(id = strategy_id).all()
+        data = OStrategy.query.filter_by(id = strategy_id).all()
         result =[]
         for random in data:
             random_data = {}
@@ -89,7 +89,7 @@ class Defense_Strategy_IndexAPi(Resource):
 
 class Defense_StrategyAPi(Resource):
     def get(self,strategy_id):
-        data = Strategy.query.filter_by(id = strategy_id).all()
+        data = DStrategy.query.filter_by(id = strategy_id).all()
         result = []
         for random in data:
             random_data = {}

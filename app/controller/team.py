@@ -276,7 +276,7 @@ class AddLineupApi(Resource):
         if 'c' not in get_pos(player_c):
             return TeamMessage(error="球员无法打C位置", state=-855).response
         if 'f' not in get_pos(player_pf):
-            return TeamMessage(error="球员无法打PF位置", state=-856)
+            return TeamMessage(error="球员无法打PF位置", state=-856).response
         if 'f' not in get_pos(player_sf):
             return TeamMessage(error="球员无法打SF位置", state=-857).response
         if 'g' not in get_pos(player_pg):
@@ -285,7 +285,7 @@ class AddLineupApi(Resource):
             return TeamMessage(error="球员无法打SG位置", state=-859).response
 
         lineup = LineUp(user_id=user_id, team_id=team_id, pf=player_id_pf, c=player_id_c, sf=player_id_sf,
-                        sg=player_id_sg, pg=player_pg)
+                        sg=player_id_sg, pg=player_id_pg, ostrategy_id=None, dstrategy_id=None)
         db.session.add(lineup)
 
         db.session.commit()
