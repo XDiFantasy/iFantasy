@@ -63,7 +63,7 @@ class TestData:
         self.writeTeam()
         for index in range(self.num_player):
             player = PlayerBase('Player '+str(index), datetime.datetime.today(),'China',1.80,180,2.3,2.5,
-                'draft',self.teams[random.randint(0,len(self.teams)-1)].id,10,self.pos[index%5],None,100,100)
+                'draft',self.teams[random.randint(0,len(self.teams)-1)].id,10,self.pos[index%5],None,100,85)
             self.players_pos[player.pos1].append(player)
             self.players.append(player)
     def genInputData(self):
@@ -76,23 +76,33 @@ class TestData:
             db.session.add(InputData(player.id,0,0,0,0,0,0,0,0,0,0,0,0))
         db.session.commit()
     def genPiece(self):
-        for player in self.palyers:
+        for player in self.players:
             db.session.add(Piece(player.id, 60))
         db.session.commit()
     def genUserMatch(self):
         for user in self.users:
             db.session.add(UserMatch(user.id))
         db.session.commit()
+    def addPiece(self):
+        for player in PlayerBase.query.all():
+            db.session.add(Piece(player.id,60))
+        db.session.commit()
+    def addUserMatch(self):
+        for user in User.query.all():
+            db.session.add(UserMatch(user.id))
+        db.session.commit()
 
 if __name__ == '__main__':
     testData = TestData()
-    testData.writeUser()
-    testData.writeTeam()
-    testData.writePlayer()
-    testData.writeInputData()
-    testData.genPiece()
-    testData.genUserMatch()
-    #testData.addInputData()
+    # testData.writeUser()
+    # testData.writeTeam()
+    # testData.writePlayer()
+    # testData.writeInputData()
+    # testData.genPiece()
+    # testData.genUserMatch()
+    testData.addInputData()
+    # testData.addPiece()
+    # testData.addUserMatch()
     
             
 

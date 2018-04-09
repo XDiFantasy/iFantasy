@@ -107,6 +107,7 @@ class GameInputData:
         'dreb_pct', 'ast_pct', 'tov', 'stl','blk','pf','p_m'
     )
     def __init__(self, input_data):
+        
         self.__result = {
             colName : getattr(input_data,colName) for colName in self.__colNames
         }
@@ -134,11 +135,12 @@ class GameThread(threading.Thread):
         threading.Thread.__init__(self)
         self.matcher1 = matcher1
         self.matcher2 = matcher2
-        self.lineup1 = LineUp.query.filter_by(id=GlobalVar.lineups[str(self.matcher1)]).first()
-        self.lineup2 = LineUp.query.filter_by(id=GlobalVar.lineups[str(self.matcher2)]).first()
+        self.lineup1 = LineUp.query.filter_by(id=GlobalVar.lineups[self.matcher1.user.id]).first()
+        self.lineup2 = LineUp.query.filter_by(id=GlobalVar.lineups[self.matcher2.user.id]).first()
         self.pos = ['sf','sg','c','pf','pg']
         self.lineup1_input_data = self.getInputData(self.lineup1)
         self.lineup2_input_data = self.getInputData(self.lineup2)
+       
         self.addStrategyAttr(self.lineup1, self.lineup1_input_data, self.lineup2_input_data)
         self.addStrategyAttr(self.lineup2, self.lineup2_input_data, self.lineup1_input_data)
         
@@ -146,12 +148,12 @@ class GameThread(threading.Thread):
         return {pos:GameInputData(input_data) 
             for pos, input_data in zip(self.pos,
                 [InputData.query.filter_by(
-                    player_base_id = getattr(lineup, ppos))
+                    player_base_id = BagPlayer.query.get(getattr(lineup, ppos)).player_id).first()
                     for ppos in self.pos
                 ])}
     def addStrategyAttr(self, lineup, my_input_data, other_input_data):
-        ostrategy = OStrategy.query.filter_by(id = lineup.OStrategy_id).first()
-        dstrategy = DStrategy.query.filter_by(id = lineup.DStrategy_id).first()
+        ostrategy = OStrategy.query.filter_by(id = lineup.ostrategy_id).first()
+        dstrategy = DStrategy.query.filter_by(id = lineup.dstrategy_id).first()
         if ostrategy is not None:
             for pos in self.pos:
                 attr = getattr(ostrategy,pos)
@@ -184,7 +186,7 @@ class GameThread(threading.Thread):
     def run(self):
         player1Res, player2Res = self.mainGame()
         self.writeResult(player1Res, player2Res)
-        SendResultTask(self.matcher1.user.id, self.matcher2.user.id,player1Res, player2Res).run()
+        #SendResultTask(self.matcher1.user.id, self.matcher2.user.id,player1Res, player2Res).run()
         GlobalVar.tasks.put(ModifyStateTask(str(self.matcher1),GameMessage.DONE))
         GlobalVar.tasks.put(ModifyStateTask(str(self.matcher2),GameMessage.DONE))
         
@@ -214,7 +216,7 @@ class MatchThread(threading.Thread):
                         matchers.task_done()
                         matcher2 = matchers.get()
                         matchers.task_done()
-                        GlobalVar.tasks.put(SendMatchedTask(matcher1.user.id, matcher2.user.id))
+                        #GlobalVar.tasks.put(SendMatchedTask(matcher1.user.id, matcher2.user.id))
                         GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.GAMING))
                         GlobalVar.tasks.put(ModifyStateTask(str(matcher2),GameMessage.GAMING))
                         GlobalVar.tasks.put(GameTask(matcher1,matcher2))
@@ -255,15 +257,15 @@ def sendMessage(message,users):
 class GameLineUp:
     __pos = ('sf','sg','c','pf','pg')
     def __init__(self,lineup_id):
-        self.lineup = LineUp.query.filter_by(id = lineup_id).first()
+        self.__lineup = LineUp.query.filter_by(id = lineup_id).first()
     @property
     def lineup(self):
-        return self.lineup
+        return self.__lineup
     def getPlayerIdNames(self):
         names = []
         ids = []
         for pos in self.__pos:
-            bagPlayer = BagPlayer.query.filter_by(id = getattr(self.lineup, pos)).first()
+            bagPlayer = BagPlayer.query.filter_by(id = getattr(self.__lineup, pos)).first()
             names.append(bagPlayer.player.name)
             ids.append(bagPlayer.player.id)
         return {id:name for id, name in zip(ids,names)}
