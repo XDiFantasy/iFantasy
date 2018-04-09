@@ -205,11 +205,11 @@ class RefreshAccessTokenApi(Resource):
 
         if logintoken:
             user = query(User).get(user_id)
-            if user and Auth.authLoginToken(user, logintoken):
+            if user:
                 user.accesstoken = Auth.generateAccessToken(user)
                 try:
                     commit()
-                    msg = Message({'accesstoken': user.accesstoken}, None, 200)
+                    msg = Message(user.accesstoken, None, 200)
                 except Exception as e:
                     rollback()
                     print(e)
@@ -242,5 +242,5 @@ class LogoutApi(Resource):
 user_api.add_resource(VerificationApi, '/verification')
 user_api.add_resource(RegisterApi, '/register')
 user_api.add_resource(LoginApi, '/login')
-user_api.add_resource(RefreshAccessTokenApi, '/refreshToken')
+user_api.add_resource(RefreshAccessTokenApi, '/refresh')
 user_api.add_resource(LogoutApi, '/logout')
