@@ -13,6 +13,7 @@ bag_api = Api(bag_bp)
 parser = reqparse.RequestParser()
 query = db.session.query
 add = db.session.add
+delete = db.session.delete
 commit = db.session.commit
 rollback = db.session.rollback
 
@@ -24,6 +25,7 @@ class BagError:
     NOT_ENOUGH_PIECE = 'You have no enough piece', -305
     NOT_ENOUGH_TRAIL_CARD = 'You have no this trail card', -306
     PLAYER_REPEAT = 'you already have this player', -307
+    NO_PLAYER = 'You have no this player', -308
 
 
 class BagMessage(Message):
@@ -173,7 +175,6 @@ class BagEquipApi(Resource):
             each_data = {}
             each_data['name'] = each.equip.name
             each_data['num'] = each.num
-            each_data['attr_ch_id'] = each.equip.attr_ch_id
 
             result.append(each_data)
         return BagMessage(result, *BagMessage.EQUIP_LIST).response
@@ -183,7 +184,49 @@ class BagEquipApi(Resource):
 #好像只能留空接口
 class UsingEquipApi(Resource):
     def post(self, user_id, equip_id):
-        pass
+        def add_equip_in_bag(user_id, equip_id):
+            if query(BagEquip).filter_by(user_id=user_id, equip_id=equip_id).first() is None:
+                add(BagEquip(user_id=user_id, equip_id=equip_id, num=1))
+                commit
+            else:
+                num = query(BagEquip.num).filter_by(user_id=user_id, equip_id=equip_id).first()
+                num += 1;
+                commit
+
+            return None
+
+        def minus_equip_in_bag(user_id, equip_id):
+            equip = query(BagEquip).filter_by(user_id=user_id, equip_id=equip_id).first()
+            equip.num -= 1
+            if equip.num <= 0:
+                delete(equip)
+            commit
+
+            return None
+
+        def equip_player(user_id, equip_id, player_id):
+            #minus,update->player_equip
+            pass
+
+        def unequip_player(user_id, player_id, type):
+            #add,update->player_equip
+            pass
+
+        def post(self, user_id, equip_id, player_id):
+            if query(PlayerEquip).filter_by(user_id=user_id, player_id=player_id).first() is None:
+                add(PlayerEquip(user_id = user_id, player_id = player_id))
+            pe_data = query(PlayerEquip).filter_by(user_id=user_id, player_id=player_id).first()
+
+            be_data = query(BagEquip).filter_by(user_id=user_id, equip_id=equip_id).first()
+            if be_data is None:
+                return BagMessage(None, *BagError.NO_EQUIP).response
+
+            unequip_player(user_id = user_id, player_id = player_id)
+
+            equip_player(user_id = user_id, equip_id = equip_id,player_id = player_id)
+
+            return BagMessage(None, *BagMessage.USING_EQUIP).response
+
 
 
 #列出bag里的prop
@@ -243,7 +286,7 @@ bag_api.add_resource(UsingPieceApi,'/usingpiece/userid=<int:user_id>/playerid=<i
 bag_api.add_resource(BagTrailCardApi,'/trailcardlist/userid=<int:user_id>')
 bag_api.add_resource(UsingTrailCardApi,'/usingtrailcard/userid=<int:user_id>/playerid=<int:player_id>')
 bag_api.add_resource(BagEquipApi,'/equiplist/userid=<int:user_id>/type=<int:type>')
-bag_api.add_resource(UsingEquipApi,'/usingequip/userid=<int:user_id>/equipid=<int:equip_id>')
+bag_api.add_resource(UsingEquipApi,'/usingequip/userid=<int:user_id>/equipid=<int:equip_id>/playerid=<int:player_id>')
 bag_api.add_resource(BagPropApi,'/proplist/userid=<int:user_id>')
 bag_api.add_resource(UsingPropApi,'/usingprop/userid=<int:user_id>/propid=<int:prop_type>')
 
