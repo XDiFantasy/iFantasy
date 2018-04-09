@@ -102,8 +102,8 @@ class Auth:
 
 
 class UserError:
-    ILLEGAL_USER =  "Illegal user", -3
-    AUTH_FAILED =  "Authentication Failed", -3
+    ILLEGAL_USER = "Illegal user", -3
+    AUTH_FAILED = "Authentication Failed", -3
 
 
 class VerificationApi(Resource):
@@ -118,15 +118,13 @@ class VerificationApi(Resource):
         code = args['code']
         zone = args['zone']
 
-        res = MobSMS(sms_key).verify_sms_code(zone, phone, code)
+        res = MobSMS(sms_key).verify_sms_code(zone, phone, code, debug=True)
         if res == 200:
             user = query(User).filter_by(tel=phone).first()
             if not user:
-                user.tel = phone
+                user = User(None, phone, None, None, None, None);
                 user.logintoken = Auth.generateTempToken(user)
                 add(user)
-            elif not user.logintoken:
-                user.logintoken = Auth.generateTempToken(user)
                 try:
                     commit()
                     msg = Message(user.user2dict(), None, 201)
@@ -207,11 +205,11 @@ class RefreshAccessTokenApi(Resource):
 
         if logintoken:
             user = query(User).get(user_id)
-            if user and Auth.authLoginToken(user, logintoken):
+            if user:
                 user.accesstoken = Auth.generateAccessToken(user)
                 try:
                     commit()
-                    msg = Message({'accesstoken': user.accesstoken}, None, 200)
+                    msg = Message(user.accesstoken, None, 200)
                 except Exception as e:
                     rollback()
                     print(e)
@@ -230,7 +228,6 @@ class LogoutApi(Resource):
         user = query(User).get(user_id)
         if not user:
             return Message(*UserError.ILLEGAL_USER).response
-        user.logintoken = None
         user.accesstoken = None
         try:
             commit()
@@ -245,5 +242,5 @@ class LogoutApi(Resource):
 user_api.add_resource(VerificationApi, '/verification')
 user_api.add_resource(RegisterApi, '/register')
 user_api.add_resource(LoginApi, '/login')
-user_api.add_resource(RefreshAccessTokenApi, '/refreshToken')
+user_api.add_resource(RefreshAccessTokenApi, '/refresh')
 user_api.add_resource(LogoutApi, '/logout')
