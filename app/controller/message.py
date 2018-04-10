@@ -23,6 +23,9 @@ class Message:
     @property
     def json(self):
         return json.dumps(self.__data)
+    @property
+    def data(self):
+        return self.__data
 
 
     
