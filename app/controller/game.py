@@ -187,7 +187,7 @@ class GameThread(threading.Thread):
     def run(self):
         player1Res, player2Res = self.mainGame()
         self.writeResult(player1Res, player2Res)
-        #SendResultTask(self.matcher1.user.id, self.matcher2.user.id,player1Res, player2Res).run()
+        SendResultTask(self.matcher1.user.id, self.matcher2.user.id,player1Res, player2Res).run()
         GlobalVar.tasks.put(ModifyStateTask(str(self.matcher1),GameMessage.DONE))
         GlobalVar.tasks.put(ModifyStateTask(str(self.matcher2),GameMessage.DONE))
         
@@ -217,7 +217,7 @@ class MatchThread(threading.Thread):
                         matchers.task_done()
                         matcher2 = matchers.get()
                         matchers.task_done()
-                        #GlobalVar.tasks.put(SendMatchedTask(matcher1.user.id, matcher2.user.id))
+                        GlobalVar.tasks.put(SendMatchedTask(matcher1.user.id, matcher2.user.id))
                         GlobalVar.tasks.put(ModifyStateTask(str(matcher1),GameMessage.GAMING))
                         GlobalVar.tasks.put(ModifyStateTask(str(matcher2),GameMessage.GAMING))
                         GlobalVar.tasks.put(GameTask(matcher1,matcher2))
