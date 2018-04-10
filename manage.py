@@ -11,7 +11,7 @@ def make_shell_context():
     BagEquip=BagEquip, BagPlayer=BagPlayer, BagPiece=BagPiece,
     BagProp=BagProp,PropUsing=PropUsing,InputData=InputData,
     Recruit=Recruit,Equip=Equip,Piece=Piece,BagTrailCard=BagTrailCard,Friend=Friend,
-    UserGame=UserGame, Strategy=Strategy,AttrCh=AttrCh, UserMatch=UserMatch,
+    UserGame=UserGame, DStrategy=DStrategy,OStrategy=OStrategy,AttrCh=AttrCh, UserMatch=UserMatch,
     PlayerBase=PlayerBase,TeamInfo=TeamInfo,User=User, LineUp=LineUp
     )
 

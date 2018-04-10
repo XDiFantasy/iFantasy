@@ -200,7 +200,8 @@ class AddLineupApi(Resource):
     parser.add_argument("sf", type=int)
     parser.add_argument("pg", type=int)
     parser.add_argument("sg", type=int)
-    parser.add_argument('strategy_id',type=int)
+    parser.add_argument('ostrategy_id',type=int)
+    parser.add_argument('dstrategy_id',type=int)
 
     '''
     返回背包拥有的球员信息 所有队伍的信息
@@ -250,7 +251,8 @@ class AddLineupApi(Resource):
         player_id_sf = args['sf']
         player_id_pg = args['pg']
         player_id_sg = args['sg']
-        strategy_id = args['strategy_id']
+        ostrategy_id = args['ostrategy_id']
+        dstrategy_id = args['dstrategy_id']
 
         print(user_id)
         print(team_id)
@@ -287,7 +289,7 @@ class AddLineupApi(Resource):
             return TeamMessage(error="球员无法打SG位置", state=-859).response
 
         lineup = LineUp(user_id=user_id, team_id=team_id, pf=player_id_pf, c=player_id_c, sf=player_id_sf,
-                        sg=player_id_sg, pg=player_id_pg,strategy_id=strategy_id)
+                        sg=player_id_sg, pg=player_id_pg,ostrategy_id=ostrategy_id,dstrategy_id=dstrategy_id)
         db.session.add(lineup)
 
         db.session.commit()

@@ -14,7 +14,7 @@ class BagEquip(db.Model):
     num = db.Column(db.Integer)
 
     user = db.relationship("User", backref='bagequip')
-    equip = db.relationship("Equip", backref='bagequip')
+    equip = db.relationship("Equip")
 
     def __init__(self, user_id, equip_id):
         self.user_id, self.equip_id = (user_id, equip_id)
@@ -29,7 +29,7 @@ class Equip(db.Model):
     name = db.Column(db.String(45))
     attr_ch_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
 
-    attr_ch = db.relationship('AttrCh', backref="equip")
+    attr_ch = db.relationship('AttrCh')
 
 
     def __repr__(self):
