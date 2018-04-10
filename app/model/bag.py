@@ -42,23 +42,23 @@ class PlayerEquip(db.Model):
     __table_args__ = (
         db.PrimaryKeyConstraint('bag_player_id'),
     )
-    bag_player_id = db.Column(db.Integer, db.ForeignKey("bag_player.player_id"))
-    coat_id = db.Column(db.Integer,db.ForeignKey('bag_equip.id'))
-    pants_id = db.Column(db.Integer,db.ForeignKey('bag_equip.id'))
-    shoes_id = db.Column(db.Integer,db.ForeignKey('bag_equip.id'))
+    bag_player_id = db.Column(db.Integer, db.ForeignKey("bag_player.id"))
+    coat_id = db.Column(db.Integer)
+    pants_id = db.Column(db.Integer)
+    shoes_id = db.Column(db.Integer)
 
     bag_player = db.relationship("BagPlayer", backref='playerequip')
     # coat = db.relationship('BagEquip')
     # pants = db.relationship('BagEquip')
     # shoes = db.relationship('BagEquip')
 
-    def __init__(self,user_id,player_id,coat_id,pants_id,shoes_id):
-        self.user_id,self.player_id,self.coat_id,self.pants_id,self.shoes_id = (
-            user_id, player_id, coat_id, pants_id, shoes_id
+    def __init__(self,bag_player_id,coat_id,pants_id,shoes_id):
+        self.bag_player_id,self.coat_id,self.pants_id,self.shoes_id = (
+            bag_player_id, coat_id, pants_id, shoes_id
         )
 
     def __repr__(self):
-        return "<PlayerEquip %r %r>" % (self.user_id, self.player_id)
+        return "<PlayerEquip %r %r %r %r>" % (self.bag_player_id, self.coat_id, self.pants_id, self.shoes_id)
 
 
 

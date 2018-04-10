@@ -4,6 +4,7 @@ from app import db
 from app.model import BagPiece, BagEquip, BagProp, BagTrailCard
 from app.model import Piece, Equip, PropUsing
 from app.model import BagPlayer,PlayerBase
+from app.model.bag import PlayerEquip
 from app.controller import Message
 from datetime import datetime,timedelta
 
@@ -175,103 +176,119 @@ class BagEquipApi(Resource):
             each_data = {}
             each_data['name'] = each.equip.name
             each_data['num'] = each.num
+            each_data['attr_ch_id'] = each.equip.attr_ch_id
 
             result.append(each_data)
         return BagMessage(result, *BagMessage.EQUIP_LIST).response
 
 #使用bag里的equip
 class UsingEquipApi(Resource):
-    def add_equip_in_bag(user_id, equip_id):
-        if query(BagEquip).filter_by(user_id= user_id, equip_id=equip_id).first() is None:
-            add(BagEquip(user_id=user_id, equip_id=equip_id, num=1))
-            commit
-        else:
-            num = query(BagEquip.num).filter_by(user_id=user_id, equip_id=equip_id).first()
-            num += 1;
-            commit
-
-        return None
-
-    def minus_equip_in_bag(user_id, equip_id):
-        equip = query(BagEquip).filter_by(user_id=user_id, equip_id=equip_id).first()
-        equip.num -= 1
-        if equip.num <= 0:
-            delete(equip)
-        commit
-
-        return None
-
-    def equip_player(bag_player_id,equip_id):
-        minus_equip_in_bag(user_id=user_id, equip_id=equip_id)
-
-        p_equip = query(PlayerEquip).filter_by(bag_player_id = bag_player_id).first()
-        e_type = query(Equip.type).filter_by(id = equip_id).first()
-        if e_type == 1:
-            p_equip.coat_id = equip_id
-        elif e_type == 2:
-            p_equip.pants_id = equip_id
-        elif e_type == 3:
-            p_equip.shoes_id = equip_id
-        else:
-            return ValueError
-
-        commit
-
-        return None
-
-    def unequip_player(user_id, player_id, type):
-        #取出待脱下的equip_id
-        p_equip = query(PlayerEquip).filter_by(user_id = user_id, player_id = player_id).first()
-        if type == 1:
-            equip_id = p_equip.coat_id
-            p_equip.coat_id = None
-        elif type == 2:
-            equip_id = p_equip.pants_id
-            p_equip.pants_id = None
-        elif type == 3:
-            equip_id = p_equip.shoes_id
-            p_equip.shoes_id = None
-        else:
-            return ValueError
-        #脱下的装备返回背包
-        add_equip_in_bag(user_id = user_id, equip_id = equip_id)
-
-        commit
-
-        return None
-
-
-
     def post(self, user_id, equip_id, player_id):
-        if query(PlayerEquip).filter_by(user_id=user_id, player_id=player_id).first() is None:
-            add(PlayerEquip(user_id = user_id, player_id = player_id))
+        bp_id = query(BagPlayer.id).filter_by(user_id= user_id,player_id = player_id).first()
+        bag_player_id = bp_id[0]
+        if query(PlayerEquip).filter_by(bag_player_id=bag_player_id).first() is None:
+            add(PlayerEquip(bag_player_id = bag_player_id,coat_id=None,pants_id=None,shoes_id=None))
             commit
+        #
+        # be_data = query(BagEquip).filter_by(user_id=user_id, equip_id=equip_id).first()
+        # if be_data is None:
+        #     return BagMessage(None, *BagError.NO_EQUIP).response
+        equip_data = query(Equip).filter_by(id= equip_id).first()
+        type = equip_data.type
+        unequip_player(bag_player_id = bag_player_id,type = type)
 
-        be_data = query(BagEquip).filter_by(user_id=user_id, equip_id=equip_id).first()
-        if be_data is None:
-            return BagMessage(None, *BagError.NO_EQUIP).response
-
-        unequip_player(user_id = user_id, player_id = player_id)
-
-        equip_player(user_id = user_id, equip_id = equip_id,player_id = player_id)
+        equip_player(equip_id = equip_id,bag_player_id = bag_player_id)
 
         result = {}
-        pe_data = query(PlayerEquip).filter_by(user_id,player_id).first()
+        pe_data = query(PlayerEquip).filter_by(bag_player_id = bag_player_id).first()
+
         if pe_data.coat_id is not None:
-            result['coat_attr_id'] = query(Equip.attr_ch_id).filter_by(id = pe_data.coat_id).first()
+            result['coat_attr_id'] = query(Equip).filter_by(id = pe_data.coat_id).first().attr_ch_id
         else:
             result['coat_attr_id'] = None
         if pe_data.pants_id is not None:
-            result['pants_attr_id'] = query(Equip.attr_ch_id).filter_by(id=pe_data.pants_id).first()
+            result['pants_attr_id'] = query(Equip).filter_by(id=pe_data.pants_id).first().attr_ch_id
         else:
             result['pants_attr_id'] = None
         if pe_data.coat_id is not None:
-            result['shoes_attr_id'] = query(Equip.attr_ch_id).filter_by(id=pe_data.shoes_id).first()
+            result['shoes_attr_id'] = query(Equip).filter_by(id=pe_data.shoes_id).first().attr_ch_id
         else:
             result['shoes_attr_id'] = None
 
 
         return BagMessage(result, *BagMessage.USING_EQUIP).response
+
+def add_equip_in_bag(user_id, equip_id):
+    if query(BagEquip).filter_by(user_id=user_id, equip_id=equip_id).first() is None:
+        add(BagEquip(user_id=user_id, equip_id=equip_id, num=1))
+        commit
+    else:
+        num = query(BagEquip.num).filter_by(user_id=user_id, equip_id=equip_id).first()
+        num += 1;
+        commit
+
+    return None
+
+
+def minus_equip_in_bag(user_id, equip_id):
+    equip = query(BagEquip).filter_by(user_id=user_id, equip_id=equip_id).first()
+    equip.num -= 1
+    if equip.num <= 0:
+        delete(equip)
+    commit
+
+    return None
+
+
+def equip_player(bag_player_id, equip_id):
+
+    data = query(BagPlayer).filter_by(id=bag_player_id).first()
+    user_id = data.user_id
+    minus_equip_in_bag(user_id=user_id, equip_id=equip_id)
+
+    p_equip = query(PlayerEquip).filter_by(bag_player_id=bag_player_id).first()
+    e_data = query(Equip).filter_by(id=equip_id).first()
+    e_type = e_data.type
+    if e_type == 1:
+        p_equip.coat_id = equip_id
+    elif e_type == 2:
+        p_equip.pants_id = equip_id
+    elif e_type == 3:
+        p_equip.shoes_id = equip_id
+    else:
+        return ValueError
+
+    commit
+
+    return None
+
+
+def unequip_player(bag_player_id, type):
+    # 取出待脱下的equip_id
+    p_equip = query(PlayerEquip).filter_by(bag_player_id=bag_player_id).first()
+    if type == 1 and p_equip.coat_id is not None:
+        equip_id = p_equip.coat_id
+        p_equip.coat_id = None
+    elif type == 2 and p_equip.pants_id is not None:
+        equip_id = p_equip.pants_id
+        p_equip.pants_id = None
+    elif type == 3 and p_equip.shoes_id is not None:
+        equip_id = p_equip.shoes_id
+        p_equip.shoes_id = None
+    else:
+        return None
+
+    # 脱下的装备返回背包
+    data = query(BagPlayer).filter_by(id= bag_player_id).first()
+    user_id = data.user_id
+
+    add_equip_in_bag(user_id=user_id, equip_id=equip_id)
+
+    commit
+
+    return None
+
+
 
 
 #列出bag里的prop
