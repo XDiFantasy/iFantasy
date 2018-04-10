@@ -11,6 +11,7 @@ from math import pow, log10
 from queue import Queue
 import datetime
 import json
+from .utils import Verify
 
 game_bp = Blueprint('game_bp', __name__, static_folder="../static/game")
 game_api = Api(game_bp)
@@ -381,64 +382,68 @@ class GameApi(Resource):
         return GameMessage(None, *GameError.NO_RESULT)
         
 
-# class GameResultApi(Resource):
-
-#     def get(self,user_id):
-#         global GlobalVar
-#         print(GlobalVar.userStates)
-#         print(GlobalVar.results)
-#         print(GlobalVar.matchers)
-#         user = User.query.filter_by(id = user_id).first()
-#         if not user:
-#             return GameMessage(None,*UserError.ILLEGAL_USER).response
-#         if str(user) not in GlobalVar.results:
-#             userState = GlobalVar.userStates[str(user)]
-#             if userState is None:
-#                 return GameMessage(None, *GameError.GAME_FAILED).response
-#             elif userState == GameMessage.GAMING:
-                
-#                 return GameMessage(GameMessage.GAMING,state=700).response
-#             elif userState == GameMessage.MATCHING:
-#                 return GameMessage(GameMessage.MATCHING,state=700).response
-#             elif userState == GameMessage.DONE:
-#                 return GameMessage(None, *GameError.RESULT_SENDED).response
-#             else:
-#                 return GameMessage(None, *GameError.GAME_FAILED).response
-
-#         gameResult = GlobalVar.results[str(user)]
-#         db.session.add(UserGame(user_id, datetime.datetime.now(), **gameResult.result))
-#         db.session.commit()
-#         matcher2 = GlobalVar.gameRooms[str(user)]
-#         matcher1 = GlobalVar.gameRooms[str(matcher2)]
-#         GlobalVar.tasks.put(DelGameRoomTask(matcher1, matcher2))
-#         return  GameMessage(gameResult.result,state=700).response
-#     def delete(self, user_id):
-#         global GlobalVar
-#         user = User.query.filter_by(id = user_id).first()
-#         if not user:
-#             return GameMessage(None,*UserError.ILLEGAL_USER).response
-#         GlobalVar.tasks.put(DelResultTask(user))
-#         GlobalVar.tasks.put(ModifyStateTask(str(user),GameMessage.DONE))
-#         return GameMessage(state=700).response
-
-# class GameMatchedApi(Resource):
-#     def get(self, user_id):
-#         user = User.query.filter_by(id = user_id).first()
-#         if not user:
-#             return GameMessage(None,*UserError.ILLEGAL_USER).response
-#         user_state = GlobalVar.userStates[str(user)]
-#         if user_state == GameMessage.GAMING or \
-#             user_state == GameMessage.DONE:
-#             #返回LineUp信息
-#             other = GlobalVar.gameRooms[sModifyLineupTasktr(user)]
-#             return GameMessage('other linup',state=700).response
-#         return GameMessage(GameMessage.MATCHING,state=700).response
-
+class FriendGame(Resource):
+    parser = reqparse.RequestParser()
+    parser.add_argument('user_id',type=int)
+    parser.add_argument('friend_id',type=int)
+    def post(self):
+        self.parser.add_argument('lineup_id',type=int)
+        args = self.parser.parse_args(strict=True)
+        user_id = args['user_id']
+        friend_id = args['friend_id']
+        lineup_id = args['lineup_id']
+        user = Verify.verifyUser(user_id)
+        friend = Verify.verifyUser(friend_id)
+        if not user or not friend:
+            return GameMessage(None,*UserError.ILLEGAL_USER).response
+        message = GameMessage({
+            'content':'friend game',
+            'from':user_id,
+            'from_nickname':user.nickname
+            },state=700).data
+        sendMessage(message,[str(friend_id)])
+        GlobalVar.tasks.put(ModifyLineupTask(user_id,lineup_id))
+        return GameMessage('waiting',state=700)
+    def delete(self):
+        args = self.parser.parse_args(strict=True)
+        user_id = args['user_id']
+        friend_id = args['friend_id']
+        user = User.query.filter_by(id=user_id).first()
+        friend = User.query.filter_by(id=friend_id).first()
+        if not user or not friend:
+            return GameMessage(None,*UserError.ILLEGAL_USER).response
+        message = GameMessage({
+            'content':'reject friend game',
+            'from':user_id,
+            'from_nickname':user.nickname
+        },state=700).data
+        sendMessage(message,[str(friend_id)])
+        return GameMessage('',state=700)
+    def get(self):
+        self.parser.add_argument('lineup_id',type=int)
+        args = self.parser.parse_args(strict=True)
+        user_id = args['user_id']
+        friend_id = args['friend_id']
+        lineup_id = args['lineup_id']
+        user = User.query.filter_by(id=user_id).first()
+        friend = User.query.filter_by(id=friend_id).first()
+        if not user or not friend:
+            return GameMessage(None,*UserError.ILLEGAL_USER).response
+        message = GameMessage({
+            'content':'accept friend game',
+            'from':user_id,
+            'from_nickname':user.nickname
+        }).data
+        sendMessage(message,[str(friend_id)])
+        GlobalVar.tasks.put(ModifyLineupTask(user_id,lineup_id))
+        GlobalVar.tasks.put(ModifyStateTask(str(user),GameMessage.GAMING))
+        GlobalVar.tasks.put(ModifyStateTask(str(friend),GameMessage.GAMING))
+        GlobalVar.tasks.put(GameTask(Matcher(user),Matcher(friend)))
+        return GameMessage(GameMessage.GAMING,state=700).response
 
        
 game_api.add_resource(GameApi,'/game')
-#game_api.add_resource(GameResultApi,'/game_result/<int:user_id>')
-#game_api.add_resource(GameMatchedApi,'/game_matched/<int:user_id>')
+game_api.add_resource(FriendGame,'/friendgame')
 
 matchThread = MatchThread()
 matchThread.setDaemon(True)

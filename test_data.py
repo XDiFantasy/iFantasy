@@ -12,9 +12,9 @@ class TestData:
         self.users = []
         self.players = []
         self.teams = []
-        self.pos = ['sg','sf','pg','pf','c']
+        self.pos = ['G','F','C']
         self.players_pos = {
-            'sg':[],'sf':[],'pg':[],'pf':[],'c':[]
+            'G':[],'F':[],'C':[]
         }
         self.input_data = []
 
@@ -63,7 +63,7 @@ class TestData:
         self.writeTeam()
         for index in range(self.num_player):
             player = PlayerBase('Player '+str(index), datetime.datetime.today(),'China',1.80,180,2.3,2.5,
-                'draft',self.teams[random.randint(0,len(self.teams)-1)].id,10,self.pos[index%5],None,100,85)
+                'draft',self.teams[random.randint(0,len(self.teams)-1)].id,10,self.pos[index%3],None,100,85)
             self.players_pos[player.pos1].append(player)
             self.players.append(player)
     def genInputData(self):

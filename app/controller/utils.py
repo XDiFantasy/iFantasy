@@ -36,3 +36,12 @@ def _(value):
 @toJson.register(date)
 def _(value):
     return str(value)
+
+class Verify:
+    
+    @staticmethod
+    def verifyUser(user_id):
+        user = User.query.filter_by(id=user_id).first()
+        if user is None:
+            return False
+        return user
