@@ -11,7 +11,7 @@ from math import pow, log10
 from queue import Queue
 import datetime
 import json
-from utils import Verify
+from .utils import Verify
 
 game_bp = Blueprint('game_bp', __name__, static_folder="../static/game")
 game_api = Api(game_bp)
