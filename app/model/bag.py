@@ -13,8 +13,8 @@ class BagEquip(db.Model):
     user = db.relationship("User", backref='bagequip')
     equip = db.relationship("Equip", backref='bagequip')
 
-    def __init__(self, id, user_id, equip_id, num):
-        self.id, self.user_id, self.equip_id, self.num = (id, user_id, equip_id, num)
+    def __init__(self,  user_id, equip_id, num):
+        self.user_id, self.equip_id, self.num = (user_id, equip_id, num)
 
     def __repr__(self):
         return "<BagEquip %r>" % (self.id)

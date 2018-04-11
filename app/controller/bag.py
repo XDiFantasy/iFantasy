@@ -184,61 +184,62 @@ class BagEquipApi(Resource):
 #使用bag里的equip
 class UsingEquipApi(Resource):
     def post(self, user_id, equip_id, player_id):
-        bp_id = query(BagPlayer.id).filter_by(user_id= user_id,player_id = player_id).first()
-        bag_player_id = bp_id[0]
+        bag_player_id = query(BagPlayer).filter_by(user_id= user_id,player_id = player_id).first().id
         if query(PlayerEquip).filter_by(bag_player_id=bag_player_id).first() is None:
             add(PlayerEquip(bag_player_id = bag_player_id,coat_id=None,pants_id=None,shoes_id=None))
-            commit
-        #
-        # be_data = query(BagEquip).filter_by(user_id=user_id, equip_id=equip_id).first()
-        # if be_data is None:
-        #     return BagMessage(None, *BagError.NO_EQUIP).response
+
         equip_data = query(Equip).filter_by(id= equip_id).first()
         type = equip_data.type
-        unequip_player(bag_player_id = bag_player_id,type = type)
-
-        equip_player(equip_id = equip_id,bag_player_id = bag_player_id)
+        old = query(PlayerEquip).filter_by(bag_player_id=bag_player_id).first()
+        old_coat = old.coat_id
+        old_pants = old.pants_id
+        old_shoes = old.shoes_id
+        if (equip_id != old_coat and equip_id != old_pants and equip_id != old_shoes):
+            unequip_player(bag_player_id = bag_player_id,type = type)
+            equip_player(equip_id = equip_id,bag_player_id = bag_player_id)
 
         result = {}
         pe_data = query(PlayerEquip).filter_by(bag_player_id = bag_player_id).first()
 
         if pe_data.coat_id is not None:
+            result['coat_id'] = pe_data.coat_id
             result['coat_attr_id'] = query(Equip).filter_by(id = pe_data.coat_id).first().attr_ch_id
         else:
-            result['coat_attr_id'] = None
+            result['coat_id'] = None
         if pe_data.pants_id is not None:
+            result['pants_id'] = pe_data.pants_id
             result['pants_attr_id'] = query(Equip).filter_by(id=pe_data.pants_id).first().attr_ch_id
         else:
-            result['pants_attr_id'] = None
-        if pe_data.coat_id is not None:
+            result['pants_id'] = None
+        if pe_data.shoes_id is not None:
+            result['shoes_id'] = pe_data.shoes_id
             result['shoes_attr_id'] = query(Equip).filter_by(id=pe_data.shoes_id).first().attr_ch_id
         else:
-            result['shoes_attr_id'] = None
+            result['shoes_id'] = None
 
-
+        commit()
         return BagMessage(result, *BagMessage.USING_EQUIP).response
 
 def add_equip_in_bag(user_id, equip_id):
     if query(BagEquip).filter_by(user_id=user_id, equip_id=equip_id).first() is None:
         add(BagEquip(user_id=user_id, equip_id=equip_id, num=1))
-        commit
     else:
-        num = query(BagEquip.num).filter_by(user_id=user_id, equip_id=equip_id).first()
+        num = query(BagEquip).filter_by(user_id=user_id, equip_id=equip_id).first().num
         num += 1;
-        commit
+
+    commit()
 
     return None
-
 
 def minus_equip_in_bag(user_id, equip_id):
     equip = query(BagEquip).filter_by(user_id=user_id, equip_id=equip_id).first()
     equip.num -= 1
     if equip.num <= 0:
         delete(equip)
-    commit
+
+    commit()
 
     return None
-
 
 def equip_player(bag_player_id, equip_id):
 
@@ -258,10 +259,9 @@ def equip_player(bag_player_id, equip_id):
     else:
         return ValueError
 
-    commit
+    commit()
 
     return None
-
 
 def unequip_player(bag_player_id, type):
     # 取出待脱下的equip_id
@@ -279,16 +279,11 @@ def unequip_player(bag_player_id, type):
         return None
 
     # 脱下的装备返回背包
-    data = query(BagPlayer).filter_by(id= bag_player_id).first()
-    user_id = data.user_id
-
+    user_id = query(BagPlayer).filter_by(id= bag_player_id).first().user_id
     add_equip_in_bag(user_id=user_id, equip_id=equip_id)
-
-    commit
+    commit()
 
     return None
-
-
 
 
 #列出bag里的prop
@@ -351,4 +346,3 @@ bag_api.add_resource(BagEquipApi,'/equiplist/userid=<int:user_id>/type=<int:type
 bag_api.add_resource(UsingEquipApi,'/usingequip/userid=<int:user_id>/equipid=<int:equip_id>/playerid=<int:player_id>')
 bag_api.add_resource(BagPropApi,'/proplist/userid=<int:user_id>')
 bag_api.add_resource(UsingPropApi,'/usingprop/userid=<int:user_id>/propid=<int:prop_type>')
-
