@@ -5,13 +5,13 @@ from app import db
 class BagEquip(db.Model):
     __tablename__ = "bag_equip"
 
-    id =db.Column(db.Integer,primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     equip_id = db.Column(db.Integer, db.ForeignKey('equip.id'))
     num = db.Column(db.Integer)
 
     user = db.relationship("User", backref='bagequip')
-    equip = db.relationship("Equip", backref='bagequip')
+    equip = db.relationship("Equip")
 
     def __init__(self,  user_id, equip_id, num):
         self.user_id, self.equip_id, self.num = (user_id, equip_id, num)
@@ -28,13 +28,13 @@ class Equip(db.Model):
     name = db.Column(db.String(45))
     attr_ch_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
 
-    attr_ch = db.relationship('AttrCh', backref="equip")
+    attr_ch = db.relationship('AttrCh')
 
     def __init__(self, type, name, attr_ch_id):
         self.type, self.name, self.attr_ch_id = (type, name, attr_ch_id)
 
     def __repr__(self):
-        return "<Equip %r, %r, %r>" % (self.id, self.type, self.name, self.attr_ch_id)
+        return "<Equip %r, %r, %r, %r>" % (self.id, self.type, self.name, self.attr_ch_id)
 
 
 class PlayerEquip(db.Model):

@@ -102,8 +102,8 @@ class UsingPieceApi(Resource):
         due = today.replace(year = today.year + 1)
         player = query(PlayerBase).filter_by(id = player_id).first()
         #现在mysql暂时不能使用中文。。。。。
-        # contract = '一年%d万，%d年%d月%d日签约，%d年%d月%d日到期' % (player.price, today.year, today.month, today.day, due.year, due.month, due.day)
-        contract = '%d per year, start at %d.%d.%d, duetime:%d.%d.%d' % (player.price, today.year, today.month, today.day, due.year, due.month, due.day)
+        contract = '一年%d万，%d年%d月%d日签约，%d年%d月%d日到期' % (player.price, today.year, today.month, today.day, due.year, due.month, due.day)
+        #contract = '%d per year, start at %d.%d.%d, duetime:%d.%d.%d' % (player.price, today.year, today.month, today.day, due.year, due.month, due.day)
         add(BagPlayer(user_id=user_id, player_id=player_id, score=player.score, salary=player.price, duedate=due, contract=contract))
         commit()
         return BagMessage(player.name, *BagMessage.USING_PIECE_ADD_PLAYER).response
@@ -161,24 +161,26 @@ class UsingTrailCardApi(Resource):
 
 #列出bag里的equip
 class BagEquipApi(Resource):
-    def get(self, user_id,type):
+    def get(self, user_id, type):
         #若type == 0，查询三种装备。
-        if type == 0:
-            data = query(BagEquip).filter_by(user_id = user_id).all()
-        else:
-            data = query(BagEquip).filter_by(user_id = user_id,equip_type = type).all()
+        # if type == 0:
+        #     data = query(BagEquip).filter_by(user_id = user_id).all()
+        # else:
+        #     data = query(BagEquip).filter_by(user_id = user_id).all()
+        data = query(BagEquip).filter_by(user_id = user_id).all()
 
         if data is None or len(data) == 0:
             return BagMessage(None, *BagError.NO_EQUIP).response
 
         result = []
         for each in data:
-            each_data = {}
-            each_data['name'] = each.equip.name
-            each_data['num'] = each.num
-            each_data['attr_ch_id'] = each.equip.attr_ch_id
+            if type == 0 or each.equip.type == type:
+                each_data = {}
+                each_data['name'] = each.equip.name
+                each_data['num'] = each.num
+                each_data['attr_ch_id'] = each.equip.attr_ch_id
+                result.append(each_data)
 
-            result.append(each_data)
         return BagMessage(result, *BagMessage.EQUIP_LIST).response
 
 #使用bag里的equip

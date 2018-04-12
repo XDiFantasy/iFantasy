@@ -48,9 +48,19 @@ class GetRecruit(Resource):
 
     def get(self):
         args = parser.parse_args()
+        user = query(User).get(args['user_id'])
+        if user is None:
+                return rMessage(error=State.ArgError).response
         info = query(Recruit).get(args['user_id'])
         if info is None:
-            return rMessage(error=State.ArgError).response
+            info = Recruit(user.id,0,datetime.datetime.now())
+            add(info)
+            try:
+                commit()
+            except Exception as e:
+                rollback()
+                print(e)
+                return rMessage(error=State.FailCommit).response
         delta = (datetime.datetime.now() - info.time)
         delta = datetime.timedelta(days=delta.days, seconds=delta.seconds)
         res = {'num': 3 - info.num}
@@ -103,7 +113,7 @@ def addPlayer(user_id, player):
     duedate = today.replace(year=today.year + 1)
     contract = '一年%d万，%d年%d月%d日签约，%d年%d月%d日到期' % (player.price, today.year,
                                                   today.month, today.day, duedate.year, duedate.month, duedate.day)
-    add(BagPlayer(user_id, player.id, player.score, player.price, None, duedate, contract))
+    add(BagPlayer(user_id, player.id, player.score, player.price, duedate, contract))
     return ({"name": player.name}, State.player)
 
 
@@ -303,11 +313,9 @@ class ShowPlayer(Resource):
         data = query(PlayerBase).order_by(db.desc(order[index]))
         all_ = dataFilter(data, None)
         c = dataFilter(data, 'c')
-        pf = dataFilter(data, 'pf')
-        sf = dataFilter(data, 'sf')
-        sg = dataFilter(data, 'sg')
-        pg = dataFilter(data, 'pg')
-        res = {'all': all_, 'c': c, 'pf': pf, 'sf': sf, 'sg': sg, 'pg': pg}
+        f = dataFilter(data, 'f')
+        g = dataFilter(data, 'g')
+        res = {'all': all_, 'c': c, 'pf': f, 'sf': f, 'sg': g, 'pg': g}
         return rMessage(res).response
 
 
@@ -323,7 +331,7 @@ class BuyTheme(Resource):
         user.money -= theme.price
         bag_players = [player.player_id for player in user.bagplayer]
         res = list()
-        for player_id in [theme.player_one,theme.player_two,theme.player_three]:
+        for player_id in [theme.player_one_id,theme.player_two_id,theme.player_three_id]:
             if player_id in bag_players:
                 data = toPiece(user.id,player_id)
             else:

@@ -128,16 +128,17 @@ class LineUp(db.Model):
     sf = db.Column(db.Integer, db.ForeignKey('bag_player.id'))
     sg = db.Column(db.Integer, db.ForeignKey('bag_player.id'))
     pg = db.Column(db.Integer, db.ForeignKey('bag_player.id'))
-    strategy_id = db.Column(db.Integer, db.ForeignKey('strategy.id'))
+    ostrategy_id = db.Column(db.Integer, db.ForeignKey('ostrategy.id'))
+    dstrategy_id = db.Column(db.Integer, db.ForeignKey('dstrategy.id'))
 
     user = db.relationship('User', backref='lineup' )
     team_info = db.relationship('TeamInfo', backref='lineup' )
 
-    strategy = db.relationship('Strategy', backref='lineup')
-
-    def __init__(self, user_id, team_id, pf, c, sf, sg, pg, strategy_id):
-        self.user_id, self.team_id, self.pf, self.c, self.sf, self.sg, self.pg, self.strategy_id = (
-            user_id, team_id, pf, c, sf, sg, pg, strategy_id
+    ostrategy = db.relationship('OStrategy', backref='lineup')
+    dstrategy = db.relationship('DStrategy', backref='lineup')
+    def __init__(self, user_id, team_id, pf, c, sf, sg, pg, ostrategy_id, dstrategy_id):
+        self.user_id, self.team_id, self.pf, self.c, self.sf, self.sg, self.pg, self.ostrategy_id, self.dstrategy_id = (
+            user_id, team_id, pf, c, sf, sg, pg, ostrategy_id, dstrategy_id
         )
 
     def __repr__(self):
