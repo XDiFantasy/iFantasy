@@ -4,26 +4,27 @@ from app import db
 from app.model import BagPiece, BagEquip, BagProp, BagTrailCard
 from app.model import Piece, Equip, PropUsing
 from app.model import BagPlayer,PlayerBase
+from app.model.bag import PlayerEquip
 from app.controller import Message
 from datetime import datetime,timedelta
 
 bag_bp = Blueprint('bag_bp', __name__)
 bag_api = Api(bag_bp)
 
-parser = reqparse.RequestParser()
 query = db.session.query
 add = db.session.add
+delete = db.session.delete
 commit = db.session.commit
-rollback = db.session.rollback
 
 class BagError:
-    NO_PIECE = 'You have no pieces',  -301
+    NO_PIECE = 'You have no pieces', -301
     NO_TRAIL_CARD = 'You have no trail cards', -302
     NO_EQUIP = 'You have no equip', -303
     NO_PROP = 'You have no Prop', -304
     NOT_ENOUGH_PIECE = 'You have no enough piece', -305
-    NOT_ENOUGH_TRAIL_CARD = 'You have no this trail cards', -306
+    NOT_ENOUGH_TRAIL_CARD = 'You have no this trail card', -306
     PLAYER_REPEAT = 'you already have this player', -307
+    NO_PLAYER = 'You have no this player', -308
 
 
 class BagMessage(Message):
@@ -41,14 +42,14 @@ class BagMessage(Message):
     USING_PROP = 'Using prop', 309
 
 
-    def __init__(self, result = None, error='', state=0):
+    def __init__(self, result = None, error = '', state = 0):
         super(BagMessage, self).__init__(result, error, state)
 
 
 #列出背包里的piece
 class BagPieceApi(Resource):
     def get(self, user_id):
-        data = BagPiece.query.filter_by(user_id=user_id).all()
+        data = BagPiece.query.filter_by(user_id = user_id).all()
         if data is None or len(data) == 0:
             return BagMessage(None, *BagError.NO_PIECE).response
 
@@ -57,7 +58,7 @@ class BagPieceApi(Resource):
             each_data = {}
             each_data['name'] = each.player_base.name
             each_data['num'] = each.num
-            each_data['total'] = query(Piece).filter_by(player_id=each.player_id).first().total_num
+            each_data['total'] = query(Piece).filter_by(player_id = each.player_id).first().total_num
             each_data['pos1'] = each.player_base.pos1
             each_data['pos2'] = each.player_base.pos2
 
@@ -70,16 +71,16 @@ class BagPieceApi(Resource):
 class UsingPieceApi(Resource):
     def post(self, user_id, player_id):
         # 判断该user是否已经有这个player
-        if BagPlayer.query.filter_by(user_id=user_id,player_id=player_id).first() != None :
+        if BagPlayer.query.filter_by(user_id = user_id, player_id = player_id).first() is not None :
             return BagMessage(None, *BagError.PLAYER_REPEAT).response
 
-        data = BagPiece.query.filter_by(user_id=user_id, player_id=player_id).first()
+        data = BagPiece.query.filter_by(user_id = user_id, player_id = player_id).first()
         #判断user是否有piece
         if data is None:
             return BagMessage(None, *BagError.NO_PIECE).response
         piece_data = {}
         piece_data['num'] = data.num
-        piece_data['total_num'] = query(Piece).filter_by(player_id=player_id).first().total_num
+        piece_data['total_num'] = query(Piece).filter_by(player_id = player_id).first().total_num
         piece_data['name'] = data.player_base.name
 
         #判断piece 是否足够合成
@@ -98,17 +99,15 @@ class UsingPieceApi(Resource):
         today = datetime.now()
         due = today.replace(year = today.year + 1)
         player = query(PlayerBase).filter_by(id = player_id).first()
-        #现在mysql暂时不能使用中文。。。。。
-        # contract = '一年%d万，%d年%d月%d日签约，%d年%d月%d日到期' % (player.price, today.year, today.month, today.day, due.year, due.month, due.day)
-        contract = '%d per year, start at %d.%d.%d, duetime:%d.%d.%d' % (player.price, today.year, today.month, today.day, due.year, due.month, due.day)
-        add(BagPlayer(user_id=user_id, player_id=player_id, score=player.score, salary=player.price, input_data_id=None, duedate=due, contract=contract))
+        contract = '一年%d万，%d年%d月%d日签约，%d年%d月%d日到期' % (player.price, today.year, today.month, today.day, due.year, due.month, due.day)
+        add(BagPlayer(user_id = user_id, player_id = player_id, score = player.score, salary = player.price, duedate = due, contract = contract))
         commit()
         return BagMessage(player.name, *BagMessage.USING_PIECE_ADD_PLAYER).response
 
 #列出bag里的trail_card
 class BagTrailCardApi(Resource):
     def get(self, user_id):
-        data = BagTrailCard.query.filter_by(user_id=user_id).all()
+        data = BagTrailCard.query.filter_by(user_id = user_id).all()
         if data is None or len(data) == 0:
             return BagMessage(None, *BagError.NO_TRAIL_CARD).response
 
@@ -120,15 +119,14 @@ class BagTrailCardApi(Resource):
             each_data['time'] = each.time
             each_data['pos1'] = each.player.pos1
             each_data['pos2'] = each.player.pos2
-
             result.append(each_data)
         return BagMessage(result, *BagMessage.TRAIL_CARD_LIST).response
 
 #使用trail card 增加player/duetime
 class UsingTrailCardApi(Resource):
-    def post(self,user_id,player_id):
-        playerdata = query(BagPlayer).filter_by(user_id=user_id,player_id=player_id).first()
-        trail_card = query(BagTrailCard).filter_by(user_id= user_id,player_id=player_id).first()
+    def post(self, user_id, player_id):
+        playerdata = query(BagPlayer).filter_by(user_id = user_id, player_id = player_id).first()
+        trail_card = query(BagTrailCard).filter_by(user_id = user_id,player_id = player_id).first()
         if trail_card is None or trail_card.num <= 0:
             return BagMessage(None,*BagError.NOT_ENOUGH_TRAIL_CARD).response
 
@@ -148,7 +146,7 @@ class UsingTrailCardApi(Resource):
             player = query(PlayerBase).filter_by(id=player_id).first()
             #contract = '%d年%d月%d日，%d年%d月%d日到期' % (today.year, today.month, today.day, due.year, due.month, due.day)
             contract = 'start:%d:%d:%d,due:%d:%d:%d' % (today.year, today.month, today.day, due.year, due.month, due.day)
-            add(BagPlayer(user_id= user_id, player_id= player_id, score= player.score, salary= player.price, input_data_id= None, duedate= due, contract=contract))
+            add(BagPlayer(user_id = user_id, player_id = player_id, score = player.score, salary = player.price, duedate = due, contract = contract))
             trail_card.num -= 1
             if trail_card.num <= 0:
                 db.session.delete(trail_card)
@@ -157,29 +155,129 @@ class UsingTrailCardApi(Resource):
 
 
 #列出bag里的equip
-#目前还没有设计具体装备，预留接口
 class BagEquipApi(Resource):
-    def get(self, user_id):
-        data = BagEquip.query.filter_by(user_id).all()
+    def get(self, user_id, type):
+        data = query(BagEquip).filter_by(user_id = user_id).all()
+
         if data is None or len(data) == 0:
             return BagMessage(None, *BagError.NO_EQUIP).response
 
         result = []
         for each in data:
-            each_data = {}
-            each_data['name'] = each.equip.name
-            each_data['num'] = each.num
-            each_data['attr_ch_id'] = each.equip.attr_ch_id
+            #若type == 0，查询所有否则只查询对应type
+            if type == 0 or each.equip.type == type:
+                each_data = {}
+                each_data['name'] = each.equip.name
+                each_data['num'] = each.num
+                each_data['attr_ch_id'] = each.equip.attr_ch_id
+                result.append(each_data)
 
-            result.append(each_data)
         return BagMessage(result, *BagMessage.EQUIP_LIST).response
 
 #使用bag里的equip
-#目前没有equip,这里先预留接口
-#好像只能留空接口
 class UsingEquipApi(Resource):
-    def post(self, user_id, equip_id):
-        pass
+    def post(self, user_id, equip_id, player_id):
+        bag_player_id = query(BagPlayer).filter_by(user_id = user_id,player_id = player_id).first().id
+        if query(PlayerEquip).filter_by(bag_player_id = bag_player_id).first() is None:
+            add(PlayerEquip(bag_player_id = bag_player_id,coat_id = None,pants_id = None,shoes_id = None))
+
+        equip_data = query(Equip).filter_by(id = equip_id).first()
+        type = equip_data.type
+        old = query(PlayerEquip).filter_by(bag_player_id = bag_player_id).first()
+        old_coat = old.coat_id
+        old_pants = old.pants_id
+        old_shoes = old.shoes_id
+        if (equip_id != old_coat and equip_id != old_pants and equip_id != old_shoes):
+            unequip_player(bag_player_id = bag_player_id,type = type)
+            equip_player(equip_id = equip_id,bag_player_id = bag_player_id)
+
+        result = {}
+        pe_data = query(PlayerEquip).filter_by(bag_player_id = bag_player_id).first()
+
+        if pe_data.coat_id is not None:
+            result['coat_id'] = pe_data.coat_id
+            result['coat_attr_id'] = query(Equip).filter_by(id = pe_data.coat_id).first().attr_ch_id
+        else:
+            result['coat_id'] = None
+        if pe_data.pants_id is not None:
+            result['pants_id'] = pe_data.pants_id
+            result['pants_attr_id'] = query(Equip).filter_by(id = pe_data.pants_id).first().attr_ch_id
+        else:
+            result['pants_id'] = None
+        if pe_data.shoes_id is not None:
+            result['shoes_id'] = pe_data.shoes_id
+            result['shoes_attr_id'] = query(Equip).filter_by(id = pe_data.shoes_id).first().attr_ch_id
+        else:
+            result['shoes_id'] = None
+
+        commit()
+        return BagMessage(result, *BagMessage.USING_EQUIP).response
+
+def add_equip_in_bag(user_id, equip_id):
+    if query(BagEquip).filter_by(user_id = user_id, equip_id = equip_id).first() is None:
+        add(BagEquip(user_id = user_id, equip_id = equip_id, num = 1))
+    else:
+        num = query(BagEquip).filter_by(user_id = user_id, equip_id = equip_id).first().num
+        num += 1;
+
+    commit()
+
+    return None
+
+def minus_equip_in_bag(user_id, equip_id):
+    equip = query(BagEquip).filter_by(user_id = user_id, equip_id = equip_id).first()
+    equip.num -= 1
+    if equip.num <= 0:
+        delete(equip)
+
+    commit()
+
+    return None
+
+def equip_player(bag_player_id, equip_id):
+
+    data = query(BagPlayer).filter_by(id = bag_player_id).first()
+    user_id = data.user_id
+    minus_equip_in_bag(user_id = user_id, equip_id = equip_id)
+
+    p_equip = query(PlayerEquip).filter_by(bag_player_id = bag_player_id).first()
+    e_data = query(Equip).filter_by(id = equip_id).first()
+    e_type = e_data.type
+    if e_type == 1:
+        p_equip.coat_id = equip_id
+    elif e_type == 2:
+        p_equip.pants_id = equip_id
+    elif e_type == 3:
+        p_equip.shoes_id = equip_id
+    else:
+        return ValueError
+
+    commit()
+
+    return None
+
+def unequip_player(bag_player_id, type):
+    # 取出待脱下的equip_id
+    p_equip = query(PlayerEquip).filter_by(bag_player_id = bag_player_id).first()
+    if type == 1 and p_equip.coat_id is not None:
+        equip_id = p_equip.coat_id
+        p_equip.coat_id = None
+    elif type == 2 and p_equip.pants_id is not None:
+        equip_id = p_equip.pants_id
+        p_equip.pants_id = None
+    elif type == 3 and p_equip.shoes_id is not None:
+        equip_id = p_equip.shoes_id
+        p_equip.shoes_id = None
+    else:
+        return None
+
+    # 脱下的装备返回背包
+    user_id = query(BagPlayer).filter_by(id = bag_player_id).first().user_id
+    add_equip_in_bag(user_id = user_id, equip_id = equip_id)
+    commit()
+
+    return None
+
 
 #列出bag里的prop
 class BagPropApi(Resource):
@@ -187,8 +285,9 @@ class BagPropApi(Resource):
         data = query(BagProp).filter_by(user_id = user_id).first()
         #若没有，则记为各拥有０个fund_card,exp_card
         if data is None:
-            add(data = BagProp(user_id= user_id,fund_card_num= 0, exp_card_num= 0))
+            add(BagProp(user_id = user_id,fund_card_num = 0, exp_card_num = 0))
             commit()
+            data = query(BagProp).filter_by(user_id = user_id).first()
         result = {}
         result['fund_card_num'] = data.fund_card_num
         result['exp_card_num'] = data.exp_card_num
@@ -215,29 +314,26 @@ class UsingPropApi(Resource):
             commit()
 
         #add duetime
-        usingdata = query(PropUsing).filter_by(user_id= user_id,prop_type= prop_type).first()
+        usingdata = query(PropUsing).filter_by(user_id = user_id,prop_type = prop_type).first()
         if usingdata is None:
             due = datetime.now() + timedelta(time)
-            add(PropUsing(user_id= user_id, prop_type= prop_type, duetime= due))
+            add(PropUsing(user_id = user_id, prop_type = prop_type, duetime = due))
             commit()
         else:
-            usingdata.duetime = usingdata.duetime +timedelta(time)
+            usingdata.duetime = usingdata.duetime + timedelta(time)
             commit()
 
-        res = query(PropUsing).filter_by(user_id= user_id,prop_type= prop_type).first()
+        res = query(PropUsing).filter_by(user_id = user_id,prop_type = prop_type).first()
         return BagMessage(res.duetime, *BagMessage.USING_PROP).response
 
 
 
-##
-## Setup the Api resource routing here
-##
-bag_api.add_resource(BagPieceApi,'/piecelist/<int:user_id>')
-bag_api.add_resource(UsingPieceApi,'/usingpiece/<int:user_id>/<int:player_id>')
-bag_api.add_resource(BagTrailCardApi,'/trailcardlist/<int:user_id>')
-bag_api.add_resource(UsingTrailCardApi,'/usingtrailcard/<int:user_id>/<int:player_id>')
-bag_api.add_resource(BagEquipApi,'/equiplist/<int:user_id>')
-bag_api.add_resource(UsingEquipApi,'/usingequip/<int:user_id>/<int:equip_id>')
-bag_api.add_resource(BagPropApi,'/proplist/<int:user_id>')
-bag_api.add_resource(UsingPropApi,'/usingprop/<int:user_id>/<int:prop_type>')
-
+# Setup the Api resource routing here
+bag_api.add_resource(BagPieceApi,'/piecelist/userid=<int:user_id>')
+bag_api.add_resource(UsingPieceApi,'/usingpiece/userid=<int:user_id>/playerid=<int:player_id>')
+bag_api.add_resource(BagTrailCardApi,'/trailcardlist/userid=<int:user_id>')
+bag_api.add_resource(UsingTrailCardApi,'/usingtrailcard/userid=<int:user_id>/playerid=<int:player_id>')
+bag_api.add_resource(BagEquipApi,'/equiplist/userid=<int:user_id>/type=<int:type>')
+bag_api.add_resource(UsingEquipApi,'/usingequip/userid=<int:user_id>/equipid=<int:equip_id>/playerid=<int:player_id>')
+bag_api.add_resource(BagPropApi,'/proplist/userid=<int:user_id>')
+bag_api.add_resource(UsingPropApi,'/usingprop/userid=<int:user_id>/propid=<int:prop_type>')
