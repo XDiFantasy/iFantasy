@@ -48,9 +48,6 @@ class PlayerEquip(db.Model):
     shoes_id = db.Column(db.Integer)
 
     bag_player = db.relationship("BagPlayer", backref='playerequip')
-    # coat = db.relationship('BagEquip')
-    # pants = db.relationship('BagEquip')
-    # shoes = db.relationship('BagEquip')
 
     def __init__(self,bag_player_id,coat_id,pants_id,shoes_id):
         self.bag_player_id,self.coat_id,self.pants_id,self.shoes_id = (
