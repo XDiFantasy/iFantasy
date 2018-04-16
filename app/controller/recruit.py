@@ -298,7 +298,7 @@ def dataFilter(items, strs):
         items = items.filter(db.or_(PlayerBase.pos1 == strs, PlayerBase.pos2 == strs))
     res = list()
     for item in items.all():
-        res.append([item.id, item.name, item.pos1, item.pos2, item.price, item.score])
+        res.append({"id":item.id, "name":item.name, "pos1":item.pos1, "pos2":item.pos2, "price":item.price, "score":item.score})
     return res
 
 
