@@ -11,6 +11,8 @@ team_api = Api(team_bp)
 '''
  返回球员的位置
 '''
+
+
 def get_pos(bag_player):
     pos = []
     pos.append(bag_player.player.pos1)
@@ -22,16 +24,36 @@ def get_pos(bag_player):
 '''
 返回球员的信息:名字 位置 背包ID
 '''
+
+
 def get_player_info(bag_player_id, pos):
     bag_player = BagPlayer.query.filter_by(id=bag_player_id).first()
-    if bag_player is None:
-        return False, "背包无此球员"
     res = {}
+    if bag_player is None:
+        return False, res
     res['bag_player_id'] = bag_player_id
     res['pos'] = pos
     res['name'] = bag_player.player.name
 
     return True, res
+
+
+'''
+删除阵容某个具体的球员
+'''
+
+
+def delete_player(lineup, bag_player_id):
+    if lineup.c == bag_player_id:
+        lineup.c = None
+    elif lineup.pf == bag_player_id:
+        lineup.pf = None
+    elif lineup.sf == bag_player_id:
+        lineup.sf = None
+    elif lineup.pg == bag_player_id:
+        lineup.pg = None
+    else:
+        lineup.sg = None
 
 
 # 错误码 800-899
@@ -48,7 +70,6 @@ class TeamMessage(Message):
 
 # 获取背包中所有球员信息,按照位置进行分类,默认是按照评分进行排序，也可以按照薪资排序
 class AllPlayerAPi(Resource):
-
     parser = reqparse.RequestParser()
     parser.add_argument("user_id", type=int)
     parser.add_argument("pos", type=str)
@@ -98,7 +119,6 @@ class AllPlayerAPi(Resource):
 
 # 获取单个球员的基本信息
 class PlayerPersonApi(Resource):
-
     parser = reqparse.RequestParser()
     parser.add_argument("bag_player_id", type=int)
 
@@ -135,7 +155,7 @@ class SeasonDataApi(Resource):
     # type为1表示常规赛数据，为0表示季后赛数据
     parser = reqparse.RequestParser()
     parser.add_argument("bag_player_id", type=int)
-    parser.add_argument("type",type=int)
+    parser.add_argument("type", type=int)
 
     def get(self):
         args = self.parser.parse_args()
@@ -143,7 +163,7 @@ class SeasonDataApi(Resource):
 
         bag_player = BagPlayer.query.filter_by(id=bag_player_id).first()
         if bag_player is None:
-            return TeamMessage(error="背包无此球员",state=-832).response
+            return TeamMessage(error="背包无此球员", state=-832).response
         player_id = bag_player.player.id
 
         type = args['type']
@@ -183,11 +203,12 @@ class SeasonDataApi(Resource):
 
             result.append(season_data)
 
-        return TeamMessage(result).response
+        # 返回最近两年的数据
+        return TeamMessage(result[:2]).response
 
 
 # 创建阵容
-class AddLineupApi(Resource):
+class CreateLineupApi(Resource):
     '''
      pos: c,pf,sf,pg,sg 的顺序
     '''
@@ -200,10 +221,13 @@ class AddLineupApi(Resource):
     parser.add_argument("sf", type=int)
     parser.add_argument("pg", type=int)
     parser.add_argument("sg", type=int)
+    parser.add_argument('ostrategy_id', type=int)
+    parser.add_argument('dstrategy_id', type=int)
 
     '''
     返回背包拥有的球员信息 所有队伍的信息
     '''
+
     def get(self):
         args = self.parser.parse_args()
         user_id = args['user_id']
@@ -240,7 +264,7 @@ class AddLineupApi(Resource):
         return TeamMessage(result=res).response
 
     def post(self):
-        args = self.parser.parse_args(strict=True)
+        args = self.parser.parse_args()
 
         user_id = args['user_id']
         team_id = args['team_id']
@@ -249,20 +273,21 @@ class AddLineupApi(Resource):
         player_id_sf = args['sf']
         player_id_pg = args['pg']
         player_id_sg = args['sg']
+        ostrategy_id = args['ostrategy_id']
+        dstrategy_id = args['dstrategy_id']
 
-        print(user_id)
-        print(team_id)
-        players = [player_id_c,player_id_pf,player_id_sf,player_id_pg,player_id_sg]
-        player_len = 0
-        for player in players:
-            if player is not None:
-                player_len += 1
+        # print(user_id)
+        # print(team_id)
+        # players = [player_id_c,player_id_pf,player_id_sf,player_id_pg,player_id_sg]
+        # player_len = 0
+        # for player in players:
+        #     if player is not None:
+        #         player_len += 1
 
-        if player_len == 0:
-            return TeamMessage(error="未选中任何球员", state=-880).response
-        if player_len < 5:
-            return TeamMessage(error="球员未满5人,无法组建球队", state=-845).response
-
+        # if player_len == 0:
+        #     return TeamMessage(error="未选中任何球员", state=-880).response
+        # if player_len < 5:
+        #     return TeamMessage(error="球员未满5人,无法组建球队", state=-845).response
 
         player_c = BagPlayer.query.filter_by(id=player_id_c).first()
         player_pf = BagPlayer.query.filter_by(id=player_id_pf).first()
@@ -270,22 +295,22 @@ class AddLineupApi(Resource):
         player_pg = BagPlayer.query.filter_by(id=player_id_pg).first()
         player_sg = BagPlayer.query.filter_by(id=player_id_sg).first()
 
-        if player_c is None or player_pf is None or player_sf is None or player_pg is None or player_sg is None:
-            return TeamMessage(error="无此球员信息", state=-851).response
+        # if player_c is None or player_pf is None or player_sf is None or player_pg is None or player_sg is None:
+        #     return TeamMessage(error="无此球员信息", state=-851).response
 
-        if 'c' not in get_pos(player_c):
+        if player_c is not None and 'C' not in get_pos(player_c):
             return TeamMessage(error="球员无法打C位置", state=-855).response
-        if 'f' not in get_pos(player_pf):
+        if player_pf is not None and 'F' not in get_pos(player_pf):
             return TeamMessage(error="球员无法打PF位置", state=-856).response
-        if 'f' not in get_pos(player_sf):
+        if player_sf is not None and 'F' not in get_pos(player_sf):
             return TeamMessage(error="球员无法打SF位置", state=-857).response
-        if 'g' not in get_pos(player_pg):
+        if player_pg is not None and 'G' not in get_pos(player_pg):
             return TeamMessage(error="球员无法打PG位置", state=-858).response
-        if 'g' not in get_pos(player_sg):
+        if player_sg is not None and 'G' not in get_pos(player_sg):
             return TeamMessage(error="球员无法打SG位置", state=-859).response
 
         lineup = LineUp(user_id=user_id, team_id=team_id, pf=player_id_pf, c=player_id_c, sf=player_id_sf,
-                        sg=player_id_sg, pg=player_id_pg, ostrategy_id=None, dstrategy_id=None)
+                        sg=player_id_sg, pg=player_id_pg, ostrategy_id=ostrategy_id, dstrategy_id=dstrategy_id)
         db.session.add(lineup)
 
         db.session.commit()
@@ -295,8 +320,12 @@ class AddLineupApi(Resource):
 
 # 获取用户阵容列表信息
 class LineUpListApi(Resource):
+    parser = reqparse.RequestParser()
+    parser.add_argument("user_id", type=int)
 
-    def get(self, user_id):
+    def get(self):
+        args = self.parser.parse_args()
+        user_id = args['user_id']
         data = LineUp.query.filter_by(user_id=user_id).all()
         if data is None or len(data) == 0:
             return TeamMessage(error="您还未创建阵容", state=-806).response
@@ -327,24 +356,75 @@ class LineupPlayerApi(Resource):
             return TeamMessage(error="无此阵容信息", state=-841).response
 
         flag, res_c = get_player_info(lineup.c, 'C')
-        if not flag:
-            return TeamMessage(error=res_c, state=-842).response
         flag, res_pf = get_player_info(lineup.pf, 'PF')
-        if not flag:
-            return TeamMessage(error=res_pf, state=-842).response
         flag, res_sf = get_player_info(lineup.sf, 'SF')
-        if not flag:
-            return TeamMessage(error=res_sf, state=-842).response
         flag, res_pg = get_player_info(lineup.pg, 'PG')
-        if not flag:
-            return TeamMessage(error=res_pg, state=-842).response
         flag, res_sg = get_player_info(lineup.sg, 'SG')
-        if not flag:
-            return TeamMessage(error=res_sg, state=-842).response
 
         res = [res_c, res_pf, res_sf, res_pg, res_sg]
 
         return TeamMessage(result=res).response
+
+
+# 修改阵容
+class ModifyLineupApi(Resource):
+    parser = reqparse.RequestParser()
+    parser.add_argument("lineup_id", type=int)
+    parser.add_argument("c", type=int)
+    parser.add_argument("pf", type=int)
+    parser.add_argument("sf", type=int)
+    parser.add_argument("pg", type=int)
+    parser.add_argument("sg", type=int)
+
+    def put(self):
+        args = self.parser.parse_args()
+        lineup_id = args['lineup_id']
+
+        lineup = LineUp.query.filter_by(id=lineup_id).first()
+        if lineup is None:
+            return TeamMessage(error="无此阵容信息", state=-841).response
+
+        player_id_c = args['c']
+        player_id_pf = args['pf']
+        player_id_sf = args['sf']
+        player_id_pg = args['pg']
+        player_id_sg = args['sg']
+
+        player_c = BagPlayer.query.filter_by(id=player_id_c).first()
+        player_pf = BagPlayer.query.filter_by(id=player_id_pf).first()
+        player_sf = BagPlayer.query.filter_by(id=player_id_sf).first()
+        player_pg = BagPlayer.query.filter_by(id=player_id_pg).first()
+        player_sg = BagPlayer.query.filter_by(id=player_id_sg).first()
+
+        if player_c:
+            if 'C' in get_pos(player_c):
+                lineup.c = player_id_c
+            else:
+                return TeamMessage(error="该球员无法打C位置",state=-855).response
+        if player_pf:
+            if 'F' in get_pos(player_pf):
+                lineup.pf = player_id_pf
+            else:
+                return TeamMessage(error="该球员无法打PF位置",state=-856).response
+        if player_sf:
+            if 'F' in get_pos(player_sf):
+                lineup.sf = player_id_sf
+            else:
+                return TeamMessage(error="该球员无法打SF位置",state=-857).response
+        if player_pg:
+            if 'G' in get_pos(player_pg):
+                lineup.pg = player_id_pg
+            else:
+                return TeamMessage(error="该球员无法打PG位置",state=-858).response
+        if player_sg:
+            if 'G' in get_pos(player_sg):
+                lineup.sg = player_id_sg
+            else:
+                return TeamMessage(error="该球员无法打SG位置",state=-859).response
+
+        db.session.commit()
+
+        return TeamMessage(result="修改阵容成功").response
 
 
 # 替换球员
@@ -352,17 +432,36 @@ class ReplacePlayerApi(Resource):
     '''
     pos: C,PF,SF,SG,PG
     '''
+    parser = reqparse.RequestParser()
+    parser.add_argument("lineup_id", type=int)
+    parser.add_argument("bag_player_id", type=int)
+    parser.add_argument("replace_player_id", type=int)
+    parser.add_argument("pos", type=str)
 
-    def get(self, lineup_id, bag_player_id, replace__player_id, pos):
-        if bag_player_id == replace__player_id:
+    def put(self):
+        args = self.parser.parse_args()
+        lineup_id = args['lineup_id']
+        bag_player_id = args['bag_player_id']
+        replace_player_id = args['replace_player_id']
+        pos = args['pos']
+        if bag_player_id == replace_player_id:
             return TeamMessage(error="不能替换自己", state=-840).response
+
+        line_up = LineUp.query.filter_by(id=lineup_id).first()
+        if line_up is None:
+            return TeamMessage(error="你未创建该阵容", state=-861).response
+
+        lineup_player_ids = [line_up.c, line_up.pf, line_up.sf, line_up.pg, line_up.sg]
+        if bag_player_id in lineup_player_ids:
+            return TeamMessage(error="阵容已有该球员", state=-862).response
+
         bag_player = BagPlayer.query.filter_by(id=bag_player_id).first()
-        replace__player = BagPlayer.query.filter_by(id=replace__player_id).first()
+        replace_player = BagPlayer.query.filter_by(id=replace_player_id).first()
 
         if bag_player is None:
             return TeamMessage(error="无此球员信息", state=-850).response
 
-        if replace__player is None:
+        if replace_player is None:
             return TeamMessage(error="无此球员信息", state=-850).response
 
         db_pos = pos
@@ -370,11 +469,6 @@ class ReplacePlayerApi(Resource):
             db_pos = pos[-1]
         if db_pos not in get_pos(bag_player):
             return TeamMessage(error="只能替换相同位置的球员", state=-860).response
-
-        line_up = LineUp.query.filter_by(id=lineup_id).first()
-
-        if line_up is None:
-            return TeamMessage(error="你未创建该阵容", state=-861).response
 
         # 更换球员
         if pos == "C":
@@ -395,34 +489,54 @@ class ReplacePlayerApi(Resource):
 
 # 解约球员，获得资金补贴
 class DeletePlayerApi(Resource):
+    parser = reqparse.RequestParser()
+    parser.add_argument("user_id", type=int)
+    parser.add_argument("bag_player_id", type=int)
 
-    def get(self, user_id, bag_player_id):
-        bag_player = BagPlayer.query.filter_by(id=bag_player_id).first()
-        if bag_player is None:
-            return TeamMessage(error="不能删除背包不存在的球员", state=-804).response
-        lineups = LineUp.query.filter(
-            or_(LineUp.c == bag_player_id, LineUp.pf == bag_player_id, LineUp.sf == bag_player_id,
-                LineUp.pg == bag_player_id, LineUp.sg == bag_player_id)).all()
-        if lineups is not None:
-            for lineup in lineups:
-                db.session.delete(lineup)
-        money = bag_player.salary
-        db.session.delete(bag_player)
+    def delete(self):
+        args = self.parser.parse_args()
+        user_id = args['user_id']
+        bag_player_id = args['bag_player_id']
+        # print(user_id)
+        # print(bag_player_id)
+
         user = User.query.filter_by(id=user_id).first()
         if user is None:
             return TeamMessage(error="该用户还未注册", state=-805).response
+
+        bag_player = BagPlayer.query.filter_by(id=bag_player_id).first()
+        if bag_player is None:
+            return TeamMessage(error="不能删除背包不存在的球员", state=-804).response
+        money = bag_player.salary
+        lineups = LineUp.query.filter(
+            or_(LineUp.c == bag_player_id, LineUp.pf == bag_player_id, LineUp.sf == bag_player_id,
+                LineUp.pg == bag_player_id, LineUp.sg == bag_player_id)).all()
+        # print(lineups)
+        if lineups is not None:
+            for lineup in lineups:
+                delete_player(lineup, bag_player_id)
+
+        db.session.delete(bag_player)
         user.money += money
         db.session.commit()
 
-        return TeamMessage(result="删除成功").response
+        return TeamMessage(result="删除成功,获取补贴{}万元".format(money)).response
 
 
-team_api.add_resource(AllPlayerAPi,'/all/player')
+team_api.add_resource(AllPlayerAPi, '/all/player')
 
 team_api.add_resource(PlayerPersonApi, '/per/player')
 
 team_api.add_resource(SeasonDataApi, '/season')
 
-team_api.add_resource(AddLineupApi,'/add/lineup')
+team_api.add_resource(CreateLineupApi, '/add/lineup')
 
-team_api.add_resource(DeletePlayerApi, '/delete/<int:user_id>/<int:bag_player_id>')
+team_api.add_resource(LineUpListApi, '/lineup/list')
+
+team_api.add_resource(LineupPlayerApi, '/lineup/player')
+
+team_api.add_resource(ModifyLineupApi, '/modify/lineup')
+
+team_api.add_resource(ReplacePlayerApi, '/replace/player')
+
+team_api.add_resource(DeletePlayerApi, '/delete/player')
