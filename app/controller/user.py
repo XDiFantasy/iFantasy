@@ -122,7 +122,7 @@ class VerificationApi(Resource):
         if res == 200:
             user = query(User).filter_by(tel=phone).first()
             if not user:
-                user = User(None, phone, None, None, None, None);
+                user = User(None, phone, 1, 1000, None, None);
                 user.logintoken = Auth.generateTempToken(user)
                 add(user)
                 try:
