@@ -1,7 +1,7 @@
 from flask import Blueprint
 from flask_restful import Api, Resource, reqparse
 from app import db
-from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, BagProp,Theme
+from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, BagProp, Theme
 from .message import Message
 from random import choice, random
 import datetime
@@ -16,7 +16,9 @@ rollback = db.session.rollback
 parser.add_argument('user_id', type=int)
 parser.add_argument('player_id', type=int)
 parser.add_argument('type', type=int)  # 1-score,2-price
+parser.add_argument('pos', type=int)  # 0-all,1-c,2-pf,3-sf,4-pg,5-sg
 parser.add_argument('theme_id', type=int)
+pic_url = "https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/{0}/2017/260x190/{1}.png"
 
 
 class State:
@@ -50,10 +52,10 @@ class GetRecruit(Resource):
         args = parser.parse_args()
         user = query(User).get(args['user_id'])
         if user is None:
-                return rMessage(error=State.ArgError).response
+            return rMessage(error=State.ArgError).response
         info = query(Recruit).get(args['user_id'])
         if info is None:
-            info = Recruit(user.id,0,datetime.datetime.now())
+            info = Recruit(user.id, 0, datetime.datetime.now())
             add(info)
             try:
                 commit()
@@ -67,7 +69,7 @@ class GetRecruit(Resource):
         if delta.days > 0 or delta.seconds > 18000:
             res['time'] = None
         else:
-            res['time'] = str(datetime.timedelta(seconds=18000)-delta)
+            res['time'] = (datetime.timedelta(seconds=18000) - delta).seconds
         return rMessage(res).response
 
 
@@ -114,7 +116,8 @@ def addPlayer(user_id, player):
     contract = '一年%d万，%d年%d月%d日签约，%d年%d月%d日到期' % (player.price, today.year,
                                                   today.month, today.day, duedate.year, duedate.month, duedate.day)
     add(BagPlayer(user_id, player.id, player.score, player.price, duedate, contract))
-    return ({"name": player.name}, State.player)
+    pic = pic_url.format(player.team_id, player.id)
+    return ({"name": player.name, "pic": pic}, State.player)
 
 
 def getPlayer(user_id, filter, level):
@@ -171,7 +174,8 @@ def getProp(user_id, filter):
             trail_card.num += 1
         else:
             add(BagTrailCard(user_id, player.id, 1, res['time']))
-        return ({'name': player.name, 'time': res['time']}, State.trail)
+        pic = pic_url.format(player.team_id, player.id)
+        return ({'name': player.name, 'time': res['time'], "pic": pic}, State.trail)
     if ptype == 'piece':
         res = genPiece()
         player = query(PlayerBase).get(res['id'])
@@ -180,7 +184,8 @@ def getProp(user_id, filter):
             piece.num += res['num']
         else:
             add(BagPiece(user_id, player.id, res['num']))
-        return ({'name': player.name, 'num': res['num']}, State.piece)
+        pic = pic_url.format(player.team_id, player.id)
+        return ({'name': player.name, 'num': res['num'], "pic": pic}, State.piece)
     prop = query(BagProp).get(user_id)
     if ptype == 'fund':
         if prop:
@@ -204,7 +209,8 @@ def toPiece(user_id, player_id):
         piece.num += num
     else:
         add(BagPiece(user_id, player.id, num))
-    return ({'name': player.name, 'num': num}, State.OwnPlayer)
+    pic = pic_url.format(player.team_id, player.id)
+    return ({'name': player.name, 'num': num, "pic": pic}, State.OwnPlayer)
 
 
 class OneRecruit(Resource):
@@ -298,25 +304,32 @@ def dataFilter(items, strs):
         items = items.filter(db.or_(PlayerBase.pos1 == strs, PlayerBase.pos2 == strs))
     res = list()
     for item in items.all():
-        res.append([item.id, item.name, item.pos1, item.pos2, item.price, item.score])
+        pic = pic_url.format(item.team_id, item.id)
+        res.append({"id": item.id, "name": item.name, "pos1": item.pos1, "pos2": item.pos2, "price": item.price,
+                    "score": item.score, "pic": pic})
     return res
 
 
 class ShowPlayer(Resource):
     def get(self):
         index = parser.parse_args()['type']
+        pos = parser.parse_args()['pos']
         if not index:
             index = 0
+        if not pos:
+            pos = 0
         if index not in [0, 1, 2]:
             return rMessage(error=State.ArgError).response
         order = [PlayerBase.id, PlayerBase.score, PlayerBase.price]
         data = query(PlayerBase).order_by(db.desc(order[index]))
-        all_ = dataFilter(data, None)
-        c = dataFilter(data, 'c')
-        f = dataFilter(data, 'f')
-        g = dataFilter(data, 'g')
-        res = {'all': all_, 'c': c, 'pf': f, 'sf': f, 'sg': g, 'pg': g}
-        return rMessage(res).response
+        if pos == 0:
+            return rMessage(dataFilter(data, None)).response
+        if pos == 1:
+            return rMessage(dataFilter(data, 'c')).response
+        if pos == 2 or pos == 3:
+            return rMessage(dataFilter(data, 'f')).response
+        if pos == 4 or pos == 5:
+            return rMessage(dataFilter(data, 'g')).response
 
 
 class BuyTheme(Resource):
@@ -331,12 +344,12 @@ class BuyTheme(Resource):
         user.money -= theme.price
         bag_players = [player.player_id for player in user.bagplayer]
         res = list()
-        for player_id in [theme.player_one_id,theme.player_two_id,theme.player_three_id]:
+        for player_id in [theme.player_one_id, theme.player_two_id, theme.player_three_id]:
             if player_id in bag_players:
-                data = toPiece(user.id,player_id)
+                data = toPiece(user.id, player_id)
             else:
                 player = query(PlayerBase).get(player_id)
-                data = addPlayer(user.id,player)
+                data = addPlayer(user.id, player)
                 data[0]['num'] = 0
             res.append(data[0])
         try:
@@ -353,4 +366,4 @@ recruit_api.add_resource(OneRecruit, '/one_recruit')
 recruit_api.add_resource(FiveRecruie, '/five_recruit')
 recruit_api.add_resource(RecruitPlayer, '/recruit')
 recruit_api.add_resource(ShowPlayer, '/show_all_payer')
-recruit_api.add_resource(BuyTheme,'/buy_theme')
+recruit_api.add_resource(BuyTheme, '/buy_theme')
