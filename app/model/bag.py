@@ -4,36 +4,60 @@ from app import db
 
 class BagEquip(db.Model):
     __tablename__ = "bag_equip"
-    __table_args__ = (
-        db.PrimaryKeyConstraint('user_id', 'equip_id'),
-    )
+
+    id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-
     equip_id = db.Column(db.Integer, db.ForeignKey('equip.id'))
-
     num = db.Column(db.Integer)
 
     user = db.relationship("User", backref='bagequip')
     equip = db.relationship("Equip")
 
-    def __init__(self, user_id, equip_id):
-        self.user_id, self.equip_id = (user_id, equip_id)
+    def __init__(self,  user_id, equip_id, num):
+        self.user_id, self.equip_id, self.num = (user_id, equip_id, num)
 
     def __repr__(self):
-        return "<BagEquip %r, %r>" % (self.user_id, self.equip_id)
+        return "<BagEquip %r>" % (self.id)
 
 
 class Equip(db.Model):
     __tablename__ = 'equip'
     id = db.Column(db.Integer, primary_key=True)
+    #type = 1,2,3：coat,pants,shoes
+    type = db.Column(db.Integer)
     name = db.Column(db.String(45))
     attr_ch_id = db.Column(db.Integer, db.ForeignKey('attr_ch.id'))
 
     attr_ch = db.relationship('AttrCh')
 
+    def __init__(self, type, name, attr_ch_id):
+        self.type, self.name, self.attr_ch_id = (type, name, attr_ch_id)
 
     def __repr__(self):
-        return "<Equip %r, %r, %r>" % (self.id, self.name, self.attr_ch_id)
+        return "<Equip %r, %r, %r, %r>" % (self.id, self.type, self.name, self.attr_ch_id)
+
+
+class PlayerEquip(db.Model):
+    __tablename__ = "player_equip"
+    __table_args__ = (
+        db.PrimaryKeyConstraint('bag_player_id'),
+    )
+    bag_player_id = db.Column(db.Integer, db.ForeignKey("bag_player.id"))
+    coat_id = db.Column(db.Integer)
+    pants_id = db.Column(db.Integer)
+    shoes_id = db.Column(db.Integer)
+
+    bag_player = db.relationship("BagPlayer", backref='playerequip')
+
+    def __init__(self,bag_player_id,coat_id,pants_id,shoes_id):
+        self.bag_player_id,self.coat_id,self.pants_id,self.shoes_id = (
+            bag_player_id, coat_id, pants_id, shoes_id
+        )
+
+    def __repr__(self):
+        return "<PlayerEquip %r %r %r %r>" % (self.bag_player_id, self.coat_id, self.pants_id, self.shoes_id)
+
+
 
 
 class BagPiece(db.Model):
@@ -116,7 +140,7 @@ class PropUsing(db.Model):
     __table_args__ = (
         db.PrimaryKeyConstraint('user_id', 'prop_type'),
     )
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     # prop_id == 0:fund_card
     # prop_id == 1:exp_card
     prop_type = db.Column(db.Integer)
