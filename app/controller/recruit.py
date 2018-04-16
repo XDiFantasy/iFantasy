@@ -69,7 +69,7 @@ class GetRecruit(Resource):
         if delta.days > 0 or delta.seconds > 18000:
             res['time'] = None
         else:
-            res['time'] = str(datetime.timedelta(seconds=18000) - delta)
+            res['time'] = (datetime.timedelta(seconds=18000) - delta).seconds
         return rMessage(res).response
 
 
