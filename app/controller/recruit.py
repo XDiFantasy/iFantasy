@@ -26,11 +26,7 @@ class State:
     NoMoney = "no enough money", -251
     OwnPlayer = "have owned the player", -252  # get piece if the player
     FailCommit = "cannot commit to db", -201
-    player = 201
-    trail = 202
-    piece = 203
-    fund = 204
-    exp = 205
+    Success = 200
 
 
 class rMessage(Message):
@@ -117,7 +113,7 @@ def addPlayer(user_id, player):
                                                   today.month, today.day, duedate.year, duedate.month, duedate.day)
     add(BagPlayer(user_id, player.id, player.score, player.price, duedate, contract))
     pic = pic_url.format(player.team_id, player.id)
-    return ({"name": player.name, "pic": pic}, State.player)
+    return ({"name": player.name, "pic": pic,"type":"player"}, State.Success)
 
 
 def getPlayer(user_id, filter, level):
@@ -175,7 +171,7 @@ def getProp(user_id, filter):
         else:
             add(BagTrailCard(user_id, player.id, 1, res['time']))
         pic = pic_url.format(player.team_id, player.id)
-        return ({'name': player.name, 'time': res['time'], "pic": pic}, State.trail)
+        return ({'name': player.name, 'time': res['time'], "pic": pic,"type":"trail"}, State.Success)
     if ptype == 'piece':
         res = genPiece()
         player = query(PlayerBase).get(res['id'])
@@ -185,20 +181,20 @@ def getProp(user_id, filter):
         else:
             add(BagPiece(user_id, player.id, res['num']))
         pic = pic_url.format(player.team_id, player.id)
-        return ({'name': player.name, 'num': res['num'], "pic": pic}, State.piece)
+        return ({'name': player.name, 'num': res['num'], "pic": pic,"type":"piece"}, State.Success)
     prop = query(BagProp).get(user_id)
     if ptype == 'fund':
         if prop:
             prop.fund_card_num += 1
         else:
             add(BagProp(user_id, 1, 0))
-        return ({'card': 'fund'}, State.fund)
+        return ({'card': 'fund',"type":"fund"}, State.Success)
     if ptype == 'exp':
         if prop:
             prop.exp_card_num += 1
         else:
             add(BagProp(user_id, 0, 1))
-        return ({'card': 'exp'}, State.exp)
+        return ({'card': 'exp',"type":"exp"}, State.Success)
 
 
 def toPiece(user_id, player_id):
@@ -210,7 +206,7 @@ def toPiece(user_id, player_id):
     else:
         add(BagPiece(user_id, player.id, num))
     pic = pic_url.format(player.team_id, player.id)
-    return ({'name': player.name, 'num': num, "pic": pic}, State.OwnPlayer)
+    return ({'name': player.name, 'num': num, "pic": pic,"type":"piece"}, State.OwnPlayer)
 
 
 class OneRecruit(Resource):
@@ -236,10 +232,10 @@ class OneRecruit(Resource):
                 res = toPiece(u_info.id, res[0])
                 mes = rMessage(res[0], res[1])
             else:
-                mes = rMessage(result=res[0], code=res[1])
+                mes = rMessage(result=res[0])
         else:
             res = getProp(u_info.id, b_info)
-            mes = rMessage(result=res[0], code=res[1])
+            mes = rMessage(result=res[0])
         r_info.num = (r_info.num + 1) % 3
         try:
             commit()
@@ -262,11 +258,15 @@ class FiveRecruie(Resource):
         else:
             return rMessage(error=State.NoMoney).response  # nomony
         res = getPlayer(u_info.id, b_info, 5)
+        items=list()
         if res[1] == State.OwnPlayer:
             res = toPiece(u_info.id, res[0])
-            mes = rMessage(res[0], res[1])  # to piece
+            items.append(res[0])  # to piece
         else:
-            mes = rMessage(result=res[0], code=res[1])  # get player
+            items.append(res[0])  # get player
+        for i in range(4):
+            items.append(getProp(u_info.id, b_info)[0])
+        mes = rMessage(items)
         try:
             commit()
         except Exception as e:
@@ -296,7 +296,7 @@ class RecruitPlayer(Resource):
             rollback()
             print(e)
             return rMessage(error=State.FailCommit).response
-        return rMessage(result=res[0], code=res[1]).response
+        return rMessage(result=res[0]).response
 
 
 def dataFilter(items, strs):
