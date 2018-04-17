@@ -222,7 +222,7 @@ class OneRecruit(Resource):
         if delta.days > 0 or delta.seconds > 18000:
             r_info.time = datetime.datetime.now()
         else:
-            if u_info.money > 100:
+            if u_info.money >= 100:
                 u_info.money -= 100
             else:
                 return rMessage(error=State.NoMoney).response
@@ -253,7 +253,7 @@ class FiveRecruie(Resource):
         if u_info is None:
             return rMessage(error=State.ArgError).response
         b_info = [player.player_id for player in u_info.bagplayer]
-        if u_info.money > 400:
+        if u_info.money >= 400:
             u_info.money -= 400
         else:
             return rMessage(error=State.NoMoney).response  # nomony
