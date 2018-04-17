@@ -9,6 +9,17 @@ team_bp = Blueprint("team_bp", __name__)
 team_api = Api(team_bp)
 
 '''
+返回球员的图片地址
+'''
+
+
+def get_image_url(bag_player):
+    base_image_url = 'https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/{team_id}/2017/260x190/{player_id}.png'
+    image_url = base_image_url.format(team_id=bag_player.player.team_id, player_id=bag_player.player.id)
+    return image_url
+
+
+'''
  返回球员的位置
 '''
 
@@ -98,7 +109,8 @@ class AllPlayerAPi(Resource):
             return TeamMessage(error="背包无球员", state=-801).response
         for player in data:
             if pos is not None and pos != '':
-                if player.player.pos1 != pos and player.player.pos2 != pos:
+                db_pos = pos[-1]
+                if player.player.pos1 != db_pos and player.player.pos2 != db_pos:
                     continue
                 else:
                     tmp_pos = pos
@@ -111,6 +123,7 @@ class AllPlayerAPi(Resource):
             player_data['pos'] = tmp_pos
             player_data['score'] = player.score
             player_data['salary'] = player.salary
+            player_data['image_url'] = get_image_url(player)
 
             result.append(player_data)
 
@@ -144,6 +157,7 @@ class PlayerPersonApi(Resource):
         result['weight'] = data.player.weight
         result['draft'] = data.player.draft  # 选秀
         result['contract'] = data.contract
+        result['image_url'] = get_image_url(data)
 
         return TeamMessage(result).response
 
@@ -204,6 +218,7 @@ class SeasonDataApi(Resource):
             result.append(season_data)
 
         # 返回最近两年的数据
+        result.append({'image_url',get_image_url(bag_player)})
         return TeamMessage(result[:2]).response
 
 
@@ -245,6 +260,7 @@ class CreateLineupApi(Resource):
             player_data['pos'] = player.player.pos1
             player_data['score'] = player.score
             player_data['salary'] = player.salary
+            player_data['image_url'] = get_image_url(player)
 
             res_player.append(player_data)
 
@@ -400,27 +416,27 @@ class ModifyLineupApi(Resource):
             if 'C' in get_pos(player_c):
                 lineup.c = player_id_c
             else:
-                return TeamMessage(error="该球员无法打C位置",state=-855).response
+                return TeamMessage(error="该球员无法打C位置", state=-855).response
         if player_pf:
             if 'F' in get_pos(player_pf):
                 lineup.pf = player_id_pf
             else:
-                return TeamMessage(error="该球员无法打PF位置",state=-856).response
+                return TeamMessage(error="该球员无法打PF位置", state=-856).response
         if player_sf:
             if 'F' in get_pos(player_sf):
                 lineup.sf = player_id_sf
             else:
-                return TeamMessage(error="该球员无法打SF位置",state=-857).response
+                return TeamMessage(error="该球员无法打SF位置", state=-857).response
         if player_pg:
             if 'G' in get_pos(player_pg):
                 lineup.pg = player_id_pg
             else:
-                return TeamMessage(error="该球员无法打PG位置",state=-858).response
+                return TeamMessage(error="该球员无法打PG位置", state=-858).response
         if player_sg:
             if 'G' in get_pos(player_sg):
                 lineup.sg = player_id_sg
             else:
-                return TeamMessage(error="该球员无法打SG位置",state=-859).response
+                return TeamMessage(error="该球员无法打SG位置", state=-859).response
 
         db.session.commit()
 
