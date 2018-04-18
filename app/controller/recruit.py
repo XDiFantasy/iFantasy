@@ -123,7 +123,7 @@ def addPlayer(user_id, player):
                                                   today.month, today.day, duedate.year, duedate.month, duedate.day)
     add(BagPlayer(user_id, player.id, player.score, player.price, duedate, contract))
     pic = pic_url.format(player.team_id, player.id)
-    return ({"name": player.name, "pic": pic,"type":"player"}, 0)
+    return {"name": player.name, "pic": pic,"type":"player"}
 
 
 def getPlayer(user_id, filter, level):
@@ -139,7 +139,7 @@ def getPlayer(user_id, filter, level):
         player = query(PlayerBase).get(player_id)
         return addPlayer(user_id, player)
     else:
-        return (player_id, State.OwnPlayer)
+        return player_id
 
 
 def genTrail(filter):
@@ -216,7 +216,7 @@ def toPiece(user_id, player_id):
     else:
         add(BagPiece(user_id, player.id, num))
     pic = pic_url.format(player.team_id, player.id)
-    return ({'name': player.name, 'num': num, "pic": pic,"type":"piece"}, State.OwnPlayer)
+    return {'name': player.name, 'num': num, "pic": pic,"type":"piece"}
 
 
 class OneRecruit(Resource):
@@ -238,16 +238,12 @@ class OneRecruit(Resource):
                 return rMessage(error=State.NoMoney).response
         if r_info.num == 2:
             res = getPlayer(u_info.id, b_info, 1)
-            if res[1] == State.OwnPlayer:
-                res = toPiece(u_info.id, res[0])
-                mes = rMessage(res[0], res[1])    ####
-            else:
-                mes = rMessage(res[0])          ####
+            if isinstance(res, int):
+                res = toPiece(u_info.id, res)
         else:
             res = getProp(u_info.id, b_info)
-            mes = rMessage(res)      ####
         r_info.num = (r_info.num + 1) % 3
-        mes = __commit__(mes)
+        mes = __commit__(rMessage(res))     ####
         return mes.response
 
 
@@ -263,19 +259,12 @@ class FiveRecruie(Resource):
         else:
             return rMessage(error=State.NoMoney).response  # no money
         res = getPlayer(u_info.id, b_info, 5)
-        items=list()
-        isPiece = False
-        if res[1] == State.OwnPlayer:
-            res = toPiece(u_info.id, res[0])
-            isPiece = True
-        items.append(res[0])
+        if isinstance(res, int):
+            res = toPiece(u_info.id, res)
+        items=[res]
         for i in range(4):
             items.append(getProp(u_info.id, b_info))
-        if isPiece :
-            mes = rMessage(items,State.OwnPlayer)       ####
-        else:
-            mes = rMessage(items)  ####
-        mes = __commit__(mes)
+        mes = __commit__(rMessage(items))
         return mes.response
 
 
@@ -293,7 +282,7 @@ class RecruitPlayer(Resource):
             return rMessage(error=State.OwnPlayer).response
         user.money -= player.price
         res = addPlayer(user.id, player)
-        mes = __commit__(rMessage(res[0]))   ####
+        mes = __commit__(rMessage(res))   ####
         return mes.response
 
 
@@ -348,7 +337,7 @@ class BuyTheme(Resource):
             else:
                 player = query(PlayerBase).get(player_id)
                 data = addPlayer(user.id, player)
-                data[0]['num'] = 0
+                data['num'] = 0
             res.append(data[0])
         mes = __commit__(rMessage(res))       ####
         return mes.response
