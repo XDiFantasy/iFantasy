@@ -35,9 +35,6 @@ class rMessage(Message):
         else:
             super(rMessage, self).__init__(result)
 
-    def error(self,err):
-        self.add('error',err)
-
 
 class GetRecruit(Resource):
     '''
@@ -198,13 +195,13 @@ def getProp(user_id, filter):
             prop.fund_card_num += 1
         else:
             add(BagProp(user_id, 1, 0))
-        return {'card': 'fund',"type":"fund"}
+        return {"type":"fund"}
     if ptype == 'exp':
         if prop:
             prop.exp_card_num += 1
         else:
             add(BagProp(user_id, 0, 1))
-        return {'card': 'exp',"type":"exp"}
+        return {"type":"exp"}
 
 
 def toPiece(user_id, player_id):
@@ -337,7 +334,6 @@ class BuyTheme(Resource):
             else:
                 player = query(PlayerBase).get(player_id)
                 data = addPlayer(user.id, player)
-                data['num'] = 0
             res.append(data)
         mes = __commit__(rMessage(res))       ####
         return mes.response
