@@ -26,15 +26,14 @@ class State:
     NoMoney = "no enough money", -251
     OwnPlayer = "have owned the player", -252  # get piece if the player
     FailCommit = "cannot commit to db", -201
-    Success = 200
 
 
 class rMessage(Message):
-    def __init__(self, result=None, error=('', 0), code=0):
-        if code == 0:
+    def __init__(self, result=None, error=('', 0)):
+        if error[1] < 0:
             super(rMessage, self).__init__(result, error[0], error[1])
         else:
-            super(rMessage, self).__init__(result, error[0], code)
+            super(rMessage, self).__init__(result)
 
 
 class GetRecruit(Resource):
@@ -91,6 +90,14 @@ def __randomPick__(lists, prob):
         if r < cum: break
     return item
 
+def __commit__(mes):
+    try:
+        commit()
+        return mes
+    except Exception as e:
+        rollback()
+        print(e)
+        return rMessage(error=State.FailCommit)
 
 def selectPlayer(type):
     score = PlayerBase.score
@@ -113,7 +120,7 @@ def addPlayer(user_id, player):
                                                   today.month, today.day, duedate.year, duedate.month, duedate.day)
     add(BagPlayer(user_id, player.id, player.score, player.price, duedate, contract))
     pic = pic_url.format(player.team_id, player.id)
-    return ({"name": player.name, "pic": pic,"type":"player"}, State.Success)
+    return {"name": player.name, "pic": pic,"type":"player"}
 
 
 def getPlayer(user_id, filter, level):
@@ -129,7 +136,7 @@ def getPlayer(user_id, filter, level):
         player = query(PlayerBase).get(player_id)
         return addPlayer(user_id, player)
     else:
-        return (player_id, State.OwnPlayer)
+        return player_id
 
 
 def genTrail(filter):
@@ -160,7 +167,7 @@ def genPiece():
 
 def getProp(user_id, filter):
     prop_type = ['trail', 'piece', 'fund', 'exp']
-    prob = [0.5, 0.3, 0.1, 0.1]
+    prob = [0.2, 0.6, 0.1, 0.1]
     ptype = __randomPick__(prop_type, prob)
     if ptype == 'trail':
         res = genTrail(set(filter))
@@ -171,7 +178,7 @@ def getProp(user_id, filter):
         else:
             add(BagTrailCard(user_id, player.id, 1, res['time']))
         pic = pic_url.format(player.team_id, player.id)
-        return ({'name': player.name, 'time': res['time'], "pic": pic,"type":"trail"}, State.Success)
+        return {'name': player.name, 'time': res['time'], "pic": pic,"type":"trail"}
     if ptype == 'piece':
         res = genPiece()
         player = query(PlayerBase).get(res['id'])
@@ -181,20 +188,20 @@ def getProp(user_id, filter):
         else:
             add(BagPiece(user_id, player.id, res['num']))
         pic = pic_url.format(player.team_id, player.id)
-        return ({'name': player.name, 'num': res['num'], "pic": pic,"type":"piece"}, State.Success)
+        return {'name': player.name, 'num': res['num'], "pic": pic,"type":"piece"}
     prop = query(BagProp).get(user_id)
     if ptype == 'fund':
         if prop:
             prop.fund_card_num += 1
         else:
             add(BagProp(user_id, 1, 0))
-        return ({'card': 'fund',"type":"fund"}, State.Success)
+        return {"type":"fund"}
     if ptype == 'exp':
         if prop:
             prop.exp_card_num += 1
         else:
             add(BagProp(user_id, 0, 1))
-        return ({'card': 'exp',"type":"exp"}, State.Success)
+        return {"type":"exp"}
 
 
 def toPiece(user_id, player_id):
@@ -206,7 +213,7 @@ def toPiece(user_id, player_id):
     else:
         add(BagPiece(user_id, player.id, num))
     pic = pic_url.format(player.team_id, player.id)
-    return ({'name': player.name, 'num': num, "pic": pic,"type":"piece"}, State.OwnPlayer)
+    return {'name': player.name, 'num': num, "pic": pic,"type":"piece"}
 
 
 class OneRecruit(Resource):
@@ -228,21 +235,12 @@ class OneRecruit(Resource):
                 return rMessage(error=State.NoMoney).response
         if r_info.num == 2:
             res = getPlayer(u_info.id, b_info, 1)
-            if res[1] == State.OwnPlayer:
-                res = toPiece(u_info.id, res[0])
-                mes = rMessage(res[0], res[1])
-            else:
-                mes = rMessage(result=res[0])
+            if isinstance(res, int):
+                res = toPiece(u_info.id, res)
         else:
             res = getProp(u_info.id, b_info)
-            mes = rMessage(result=res[0])
         r_info.num = (r_info.num + 1) % 3
-        try:
-            commit()
-        except Exception as e:
-            rollback()
-            print(e)
-            mes = rMessage(error=State.FailCommit)
+        mes = __commit__(rMessage(res))     ####
         return mes.response
 
 
@@ -256,23 +254,14 @@ class FiveRecruie(Resource):
         if u_info.money >= 400:
             u_info.money -= 400
         else:
-            return rMessage(error=State.NoMoney).response  # nomony
+            return rMessage(error=State.NoMoney).response  # no money
         res = getPlayer(u_info.id, b_info, 5)
-        items=list()
-        if res[1] == State.OwnPlayer:
-            res = toPiece(u_info.id, res[0])
-            items.append(res[0])  # to piece
-        else:
-            items.append(res[0])  # get player
+        if isinstance(res, int):
+            res = toPiece(u_info.id, res)
+        items=[res]
         for i in range(4):
-            items.append(getProp(u_info.id, b_info)[0])
-        mes = rMessage(items)
-        try:
-            commit()
-        except Exception as e:
-            rollback()
-            print(e)
-            mes = rMessage(error=State.FailCommit)
+            items.append(getProp(u_info.id, b_info))
+        mes = __commit__(rMessage(items))
         return mes.response
 
 
@@ -290,13 +279,8 @@ class RecruitPlayer(Resource):
             return rMessage(error=State.OwnPlayer).response
         user.money -= player.price
         res = addPlayer(user.id, player)
-        try:
-            commit()
-        except Exception as e:
-            rollback()
-            print(e)
-            return rMessage(error=State.FailCommit).response
-        return rMessage(result=res[0]).response
+        mes = __commit__(rMessage(res))   ####
+        return mes.response
 
 
 def dataFilter(items, strs):
@@ -350,15 +334,9 @@ class BuyTheme(Resource):
             else:
                 player = query(PlayerBase).get(player_id)
                 data = addPlayer(user.id, player)
-                data[0]['num'] = 0
-            res.append(data[0])
-        try:
-            commit()
-        except Exception as e:
-            rollback()
-            print(e)
-            return rMessage(error=State.FailCommit).response
-        return rMessage(res).response
+            res.append(data)
+        mes = __commit__(rMessage(res))       ####
+        return mes.response
 
 
 recruit_api.add_resource(GetRecruit, '/get_recruit_info')
