@@ -20,7 +20,7 @@ class apiForTheme(Resource):
 			try:
 				theme = query(Theme).filter_by(id=themeId).first()
 				data = list()
-				players = [theme.player_one, theme.player_two, theme.player_three]
+				players = [theme.player_one_id, theme.player_two_id, theme.player_three_id]
 				for index in range(3):
 					player = query(PlayerBase).filter_by(id=players[index]).first()
 					birthday = datetime(year=player.birthday.year, month=player.birthday.month, day=player.birthday.day)
@@ -41,7 +41,7 @@ class apiForTheme(Resource):
 			data = list()
 			for row in rows:
 				data.append({'id':row.id, 'title':row.title, 'detail':row.detail, 'price':row.price, 
-				'player_one':row.player_one, 'player_two':row.player_two, 'player_three':row.player_three})
+				'player_one':row.player_one_id, 'player_two':row.player_two_id, 'player_three':row.player_three_id})
 			return Message(data).response
 
 class apiForVip(Resource):
