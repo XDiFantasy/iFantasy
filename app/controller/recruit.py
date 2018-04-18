@@ -338,7 +338,7 @@ class BuyTheme(Resource):
                 player = query(PlayerBase).get(player_id)
                 data = addPlayer(user.id, player)
                 data['num'] = 0
-            res.append(data[0])
+            res.append(data)
         mes = __commit__(rMessage(res))       ####
         return mes.response
 
