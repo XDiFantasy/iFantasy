@@ -89,6 +89,11 @@ class Rank:
     
     def update(self, user,new_score):
         userMatch = UserMatch.query.filter_by(user_id=user.id).first()
+        if userMatch is None:
+            userMatch = UserMatch(user.id)
+            db.session.add(userMatch)
+            db.session.commit()
+            #userMatch = UserMatch.query.filter_by(user_id=user.id).first()
         userMatch.score = new_score
         db.session.add(userMatch)
         db.session.commit()
