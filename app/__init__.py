@@ -57,7 +57,7 @@ def create_app(config_name):
     def page_not_found(e):
         return render_template('404.html', base_template=appbuilder.base_template, appbuilder=appbuilder), 404
 
-    db.create_all()
+    #db.create_all()
 
     
 
