@@ -369,8 +369,11 @@ class GameApi(Resource):
         args = self.parser.parse_args(strict=True)
         user_id = args['user_id']
         lineup_id = args['lineup_id']
+        if not lineup_id or not user_id:
+            return GameMessage(None, *GameError.GAME_FAILED).response
+        #print(LineUp.query.get(lineup_id))
         if LineUp.query.get(lineup_id) is None:
-            return GameMessage(None, *GameError.GAME_FAILED)
+            return GameMessage(None, *GameError.GAME_FAILED).response
 
         user = User.query.filter_by(id=user_id).first()
         if not user:
@@ -381,7 +384,7 @@ class GameApi(Resource):
             GlobalVar.tasks.put(ModifyLineupTask(user_id,lineup_id))
             GlobalVar.tasks.put(AddInMatchersTask(user))
             return GameMessage().matching.response
-        return GameMessage(None, *GameError.NO_RESULT)
+        return GameMessage(None, *GameError.NO_RESULT).response
         
 
 class FriendGame(Resource):
