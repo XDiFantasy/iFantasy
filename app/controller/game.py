@@ -369,6 +369,8 @@ class GameApi(Resource):
         args = self.parser.parse_args(strict=True)
         user_id = args['user_id']
         lineup_id = args['lineup_id']
+        if LineUp.query.get(lineup_id) is None:
+            return GameMessage(None, *GameError.GAME_FAILED)
 
         user = User.query.filter_by(id=user_id).first()
         if not user:

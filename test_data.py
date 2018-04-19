@@ -91,18 +91,26 @@ class TestData:
         for user in User.query.all():
             db.session.add(UserMatch(user.id))
         db.session.commit()
+def addinputdata():
+    players = PlayerBase.query.all()
+    #print(players)
+    for player in players:
+        input_data = InputData(player.id,0,0,0,0,0,0,0,0,0,0,0,0)
+        db.session.add(input_data)
+    db.session.commit()
 
 if __name__ == '__main__':
-    testData = TestData()
+    #testData = TestData()
     # testData.writeUser()
     # testData.writeTeam()
     # testData.writePlayer()
     # testData.writeInputData()
     # testData.genPiece()
     # testData.genUserMatch()
-    testData.addInputData()
+    #testData.addInputData()
     # testData.addPiece()
     # testData.addUserMatch()
+    addinputdata()
     
             
 
