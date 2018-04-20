@@ -187,6 +187,7 @@ class UsingEquipApi(Resource):
         old_coat = old.coat_id
         old_pants = old.pants_id
         old_shoes = old.shoes_id
+        #如果没穿着该装备，才脱下并穿上新装备。已穿着则直接不脱不穿
         if (equip_id != old_coat and equip_id != old_pants and equip_id != old_shoes):
             unequip_player(bag_player_id = bag_player_id,type = type)
             equip_player(equip_id = equip_id,bag_player_id = bag_player_id)
@@ -278,6 +279,19 @@ def unequip_player(bag_player_id, type):
 
     return None
 
+#展示bag中拥有的球员穿着在身上的装备信息
+class PlayerEquipApi(Resource):
+    def get(self, bag_player_id):
+        data = query(PlayerEquip).filter_by(bag_player_id = bag_player_id).first()
+        if data is None:
+            return BagMessage(None, *BagError.NO_EQUIP).response
+
+        result = {}
+        result['coat_id'] = data.coat_id
+        result['pants_id'] = data.pants_id
+        result['shoes_id'] = data.shoes_id
+
+        return BagMessage(result, *BagMessage.EQUIP_LIST).response
 
 #列出bag里的prop
 class BagPropApi(Resource):
@@ -331,9 +345,13 @@ class UsingPropApi(Resource):
 # Setup the Api resource routing here
 bag_api.add_resource(BagPieceApi,'/piecelist/userid=<int:user_id>')
 bag_api.add_resource(UsingPieceApi,'/usingpiece/userid=<int:user_id>/playerid=<int:player_id>')
+
 bag_api.add_resource(BagTrailCardApi,'/trailcardlist/userid=<int:user_id>')
 bag_api.add_resource(UsingTrailCardApi,'/usingtrailcard/userid=<int:user_id>/playerid=<int:player_id>')
+
 bag_api.add_resource(BagEquipApi,'/equiplist/userid=<int:user_id>/type=<int:type>')
 bag_api.add_resource(UsingEquipApi,'/usingequip/userid=<int:user_id>/equipid=<int:equip_id>/playerid=<int:player_id>')
+bag_api.add_resource(PlayerEquipApi,'/playerequiplist/bagplayerid=<int:bag_player_id>')
+
 bag_api.add_resource(BagPropApi,'/proplist/userid=<int:user_id>')
 bag_api.add_resource(UsingPropApi,'/usingprop/userid=<int:user_id>/propid=<int:prop_type>')
