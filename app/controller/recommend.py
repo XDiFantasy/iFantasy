@@ -4,3 +4,6 @@ from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPie
 from .message import Message
 from random import choice, random
 import datetime
+
+class recommend:
+    pass

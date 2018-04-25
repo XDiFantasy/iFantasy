@@ -17,3 +17,19 @@ class Recruit(db.Model):
 
     def __repr__(self):
         return "<Recruit %r>" % self.user_id
+
+class Rate(db.Model):
+    __tablename__ = "rate"
+
+    id = db.Column(db.Integer, primary_key=True, nullable=False, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    player_id = db.Column(db.Integer, db.ForeignKey('player_base.id'), nullable=False)
+    score = db.Column(db.FLOAT)
+
+    def __init__(self,user_id,player_id,score):
+        self.user_id=user_id
+        self.player_id=player_id
+        self.score=score
+
+    def __repr__(self):
+        return "<Rate %r, %r>" % (self.user_id,self.player_id)
