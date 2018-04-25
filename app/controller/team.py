@@ -144,7 +144,6 @@ class PlayerPersonApi(Resource):
             return TeamMessage(error="背包内无此球员信息", state=-802).response
         result = {}
 
-        # TODO：臂展，站立身高的数据没有爬取到
         result['name'] = data.player.name
         result['team_name'] = data.player.team.name
         result['cloth_num'] = data.player.cloth_num
@@ -155,6 +154,8 @@ class PlayerPersonApi(Resource):
         result['country'] = data.player.country
         result['height'] = data.player.height
         result['weight'] = data.player.weight
+        result['armspan'] = data.player.armspan
+        result['reach_height'] = data.player.reach_height
         result['draft'] = data.player.draft  # 选秀
         result['contract'] = data.contract
         result['image_url'] = get_image_url(data)
