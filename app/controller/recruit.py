@@ -18,6 +18,7 @@ parser.add_argument('player_id', type=int)
 parser.add_argument('type', type=int)  # 1-score,2-price
 parser.add_argument('pos', type=int)  # 0-all,1-c,2-pf,3-sf,4-pg,5-sg
 parser.add_argument('theme_id', type=int)
+parser.add_argument('bag_player_id', type=int)
 pic_url = "https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/{0}/2017/260x190/{1}.png"
 
 
@@ -90,6 +91,7 @@ def __randomPick__(lists, prob):
         if r < cum: break
     return item
 
+
 def __commit__(mes):
     try:
         commit()
@@ -98,6 +100,7 @@ def __commit__(mes):
         rollback()
         print(e)
         return rMessage(error=State.FailCommit)
+
 
 def selectPlayer(type):
     score = PlayerBase.score
@@ -120,7 +123,7 @@ def addPlayer(user_id, player):
                                                   today.month, today.day, duedate.year, duedate.month, duedate.day)
     add(BagPlayer(user_id, player.id, player.score, player.price, duedate, contract))
     pic = pic_url.format(player.team_id, player.id)
-    return {"name": player.name, "pic": pic,"type":"player"}
+    return {"name": player.name, "pic": pic, "type": "player"}
 
 
 def getPlayer(user_id, filter, level):
@@ -178,7 +181,7 @@ def getProp(user_id, filter):
         else:
             add(BagTrailCard(user_id, player.id, 1, res['time']))
         pic = pic_url.format(player.team_id, player.id)
-        return {'name': player.name, 'time': res['time'], "pic": pic,"type":"trail"}
+        return {'name': player.name, 'time': res['time'], "pic": pic, "type": "trail"}
     if ptype == 'piece':
         res = genPiece()
         player = query(PlayerBase).get(res['id'])
@@ -188,20 +191,20 @@ def getProp(user_id, filter):
         else:
             add(BagPiece(user_id, player.id, res['num']))
         pic = pic_url.format(player.team_id, player.id)
-        return {'name': player.name, 'num': res['num'], "pic": pic,"type":"piece"}
+        return {'name': player.name, 'num': res['num'], "pic": pic, "type": "piece"}
     prop = query(BagProp).get(user_id)
     if ptype == 'fund':
         if prop:
             prop.fund_card_num += 1
         else:
             add(BagProp(user_id, 1, 0))
-        return {"type":"fund"}
+        return {"type": "fund"}
     if ptype == 'exp':
         if prop:
             prop.exp_card_num += 1
         else:
             add(BagProp(user_id, 0, 1))
-        return {"type":"exp"}
+        return {"type": "exp"}
 
 
 def toPiece(user_id, player_id):
@@ -213,7 +216,7 @@ def toPiece(user_id, player_id):
     else:
         add(BagPiece(user_id, player.id, num))
     pic = pic_url.format(player.team_id, player.id)
-    return {'name': player.name, 'num': num, "pic": pic,"type":"piece"}
+    return {'name': player.name, 'num': num, "pic": pic, "type": "piece"}
 
 
 class OneRecruit(Resource):
@@ -240,7 +243,7 @@ class OneRecruit(Resource):
         else:
             res = getProp(u_info.id, b_info)
         r_info.num = (r_info.num + 1) % 3
-        mes = __commit__(rMessage(res))     ####
+        mes = __commit__(rMessage(res))  ####
         return mes.response
 
 
@@ -258,7 +261,7 @@ class FiveRecruie(Resource):
         res = getPlayer(u_info.id, b_info, 5)
         if isinstance(res, int):
             res = toPiece(u_info.id, res)
-        items=[res]
+        items = [res]
         for i in range(4):
             items.append(getProp(u_info.id, b_info))
         mes = __commit__(rMessage(items))
@@ -279,7 +282,7 @@ class RecruitPlayer(Resource):
             return rMessage(error=State.OwnPlayer).response
         user.money -= player.price
         res = addPlayer(user.id, player)
-        mes = __commit__(rMessage(res))   ####
+        mes = __commit__(rMessage(res))  ####
         return mes.response
 
 
@@ -335,7 +338,46 @@ class BuyTheme(Resource):
                 player = query(PlayerBase).get(player_id)
                 data = addPlayer(user.id, player)
             res.append(data)
-        mes = __commit__(rMessage(res))       ####
+        mes = __commit__(rMessage(res))  ####
+        return mes.response
+
+
+class RenewContract(Resource):
+    def __getInfo__(self):
+        args = parser.parse_args()
+        bag_player = query(BagPlayer).get(args['bag_player_id'])
+        if bag_player is None:
+            return None
+        player = query(PlayerBase).get(bag_player.player_id)
+        price = int(((bag_player.score * 1.0 / player.score) ** 2) * player.price)
+        return [bag_player, price]
+
+    def get(self):
+        res = self.__getInfo__()
+        if res is None:
+            return rMessage(error=State.ArgError).response
+        return rMessage({'price': res[1]}).response
+
+    def post(self):
+        res = self.__getInfo__()
+        if res is None:
+            return rMessage(error=State.ArgError).response
+        bag_player = res[0]
+        price = res[1]
+        user = query(User).get(bag_player.user_id)
+        if user.money < price:
+            return rMessage(error=State.NoMoney).response
+        else:
+            user.money -= price
+        bag_player.salary = price
+        duedate = bag_player.duedate
+        duedate = duedate.replace(year=duedate.year + 1)
+        bag_player.duedate = duedate
+        today = datetime.datetime.today()
+        contract = '一年%d万，%d年%d月%d日续约，%d年%d月%d日到期' % (price, today.year,
+                                                      today.month, today.day, duedate.year, duedate.month, duedate.day)
+        bag_player.contract = contract
+        mes = __commit__(rMessage({'contract':contract}))
         return mes.response
 
 
@@ -345,3 +387,4 @@ recruit_api.add_resource(FiveRecruie, '/five_recruit')
 recruit_api.add_resource(RecruitPlayer, '/recruit')
 recruit_api.add_resource(ShowPlayer, '/show_all_payer')
 recruit_api.add_resource(BuyTheme, '/buy_theme')
+recruit_api.add_resource(RenewContract,'/renew_contract')
