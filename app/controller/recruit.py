@@ -3,7 +3,7 @@ from flask_restful import Api, Resource, reqparse
 from app import db
 from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, BagProp, Theme
 from .message import Message
-from random import choice, random
+from random import choice, random, sample
 import datetime
 
 recruit_bp = Blueprint('recruit_bp', __name__)
@@ -102,18 +102,22 @@ def __commit__(mes):
         return rMessage(error=State.FailCommit)
 
 
-def selectPlayer(type):
+def selectPlayer(type, pos=None):
     score = PlayerBase.score
     id = PlayerBase.id
+    pos1 = PlayerBase.pos1
+    pos2 = PlayerBase.pos2
     if type == 0:
-        res = query(id).filter(score > 90).all()
+        res = query(id).filter(score > 90)
     if type == 1:
-        res = query(id).filter(score <= 90, score > 80).all()
+        res = query(id).filter(score <= 90, score > 80)
     if type == 2:
-        res = query(id).filter(score <= 80, score > 70).all()
+        res = query(id).filter(score <= 80, score > 70)
     if type == 3:
-        res = query(id).filter(score <= 70).all()
-    return __toSet__(res)
+        res = query(id).filter(score <= 70)
+    if pos:
+        res = res.filter(db.or_(pos1 == pos, pos2 == pos))
+    return __toSet__(res.all())
 
 
 def addPlayer(user_id, player):
@@ -377,7 +381,24 @@ class RenewContract(Resource):
         contract = '一年%d万，%d年%d月%d日续约，%d年%d月%d日到期' % (price, today.year,
                                                       today.month, today.day, duedate.year, duedate.month, duedate.day)
         bag_player.contract = contract
-        mes = __commit__(rMessage({'contract':contract}))
+        mes = __commit__(rMessage({'contract': contract}))
+        return mes.response
+
+
+class InitPlayer(Resource):
+    def post(self):
+        user_id = parser.parse_args()['user_id']
+        c_player = selectPlayer(3, 'c')
+        players = {choice(list(c_player))}
+        f_player = selectPlayer(3, 'f') - players
+        players.update(sample(list(f_player), 2))
+        g_player = selectPlayer(3, 'g') - players
+        players.update(sample(list(g_player), 2))
+        res = list()
+        for player_id in players:
+            player = query(PlayerBase).get(player_id)
+            res.append(addPlayer(user_id, player))
+        mes = __commit__(rMessage(res))
         return mes.response
 
 
@@ -387,4 +408,5 @@ recruit_api.add_resource(FiveRecruie, '/five_recruit')
 recruit_api.add_resource(RecruitPlayer, '/recruit')
 recruit_api.add_resource(ShowPlayer, '/show_all_payer')
 recruit_api.add_resource(BuyTheme, '/buy_theme')
-recruit_api.add_resource(RenewContract,'/renew_contract')
+recruit_api.add_resource(RenewContract, '/renew_contract')
+recruit_api.add_resource(InitPlayer, '/init_player')
