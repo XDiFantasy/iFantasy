@@ -1,21 +1,81 @@
 from flask import Blueprint
 from flask_restful import Api, Resource, reqparse
-from app.model import BagPlayer, SeasonData, User, LineUp, TeamInfo
+from app.model import BagPlayer, SeasonData, User, LineUp, TeamInfo, PlayerBase
 from app.controller import Message
 from app import db
 from sqlalchemy import or_
+import datetime
 
 team_bp = Blueprint("team_bp", __name__)
 team_api = Api(team_bp)
+
+'''
+获取球员赛季数据
+'''
+
+
+def get_season_data(data):
+    result = []
+
+    for season in data:
+        season_data = {}
+        season_data['season'] = season.season
+        season_data['team_name'] = season.team_name
+        season_data['gp'] = season.gp  # 出场
+        season_data['min'] = season.min  # 时间
+        season_data['pts'] = season.pts  # 得分
+
+        season_data['reb'] = season.reb  # 篮板
+        season_data['ast'] = season.ast  # 助攻
+        season_data['stl'] = season.stl  # 抢断
+        season_data['blk'] = season.blk  # 盖帽
+        season_data['tov'] = season.tov  # 失误
+        season_data['fg_pct'] = season.fg_pct  # 投篮%
+        season_data['fg3_pct'] = season.fg3_pct  # 三分%
+        season_data['ft_pct'] = season.ft_pct  # 罚球%
+        season_data['efg_pct'] = season.efg_pct
+        season_data['ts_pct'] = season.ts_pct
+        season_data['ortg'] = season.ortg
+        season_data['drtg'] = season.drtg
+
+        result.append(season_data)
+    return result
+
+
+'''
+获取球员基本信息
+'''
+
+
+def get_player_base(player):
+    result = {}
+
+    result['name'] = player.name
+    result['team_name'] = player.team.name
+    result['cloth_num'] = player.cloth_num
+    result['pos'] = player.pos1  # 默认取球员第一个位置
+    result['score'] = player.score
+    result['price'] = player.price
+    result['birthday'] = player.birthday
+    result['country'] = player.country
+    result['height'] = player.height
+    result['weight'] = player.weight
+    result['armspan'] = player.armspan
+    result['reach_height'] = player.reach_height
+    result['draft'] = player.draft  # 选秀
+    result['image_url'] = get_image_url(player)
+
+    return result
+
 
 '''
 返回球员的图片地址
 '''
 
 
-def get_image_url(bag_player):
+def get_image_url(player):
     base_image_url = 'https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/{team_id}/2017/260x190/{player_id}.png'
-    image_url = base_image_url.format(team_id=bag_player.player.team_id, player_id=bag_player.player.id)
+    image_url = base_image_url.format(team_id=player.team_id, player_id=player.id)
     return image_url
 
 
@@ -99,11 +159,14 @@ class AllPlayerAPi(Resource):
         # print(type(pos))
         # print(pos)
         # print(order)
+        now_time = datetime.datetime.now()
         if order == 'score':
-            data = BagPlayer.query.filter_by(user_id=user_id).order_by(BagPlayer.score.desc()).all()
+            data = BagPlayer.query.filter(BagPlayer.user_id == user_id, BagPlayer.duedate > now_time).order_by(
+                BagPlayer.score.desc()).all()
         else:
             # assert order == 'salary'
-            data = BagPlayer.query.filter_by(user_id=user_id).order_by(BagPlayer.salary.desc()).all()
+            data = BagPlayer.query.filter(BagPlayer.user_id == user_id, BagPlayer.duedate > now_time).order_by(
+                BagPlayer.salary.desc()).all()
         result = []
         if data is None or len(data) == 0:
             return TeamMessage(error="背包无球员", state=-801).response
@@ -123,7 +186,7 @@ class AllPlayerAPi(Resource):
             player_data['pos'] = tmp_pos
             player_data['score'] = player.score
             player_data['salary'] = player.salary
-            player_data['image_url'] = get_image_url(player)
+            player_data['image_url'] = get_image_url(player.player)
 
             result.append(player_data)
 
@@ -134,31 +197,29 @@ class AllPlayerAPi(Resource):
 class PlayerPersonApi(Resource):
     parser = reqparse.RequestParser()
     parser.add_argument("bag_player_id", type=int)
+    parser.add_argument('player_id', type=int)
 
     def get(self):
         args = self.parser.parse_args()
-        bag_player_id = args['bag_player_id']
+        # print(args)
+        player_id = args['player_id']
+        if player_id:
+            player = PlayerBase.query.filter_by(id=player_id).first()
+            if not player:
+                return TeamMessage(error='数据库无此球员', state=-801).response
+            res = get_player_base(player)
+            return TeamMessage(res).response
 
+        bag_player_id = args['bag_player_id']
         data = BagPlayer.query.filter_by(id=bag_player_id).first()
         if data is None:
             return TeamMessage(error="背包内无此球员信息", state=-802).response
-        result = {}
 
-        result['name'] = data.player.name
-        result['team_name'] = data.player.team.name
-        result['cloth_num'] = data.player.cloth_num
-        result['pos'] = data.player.pos1  # 默认取球员第一个位置
+        result = get_player_base(data.player)
         result['score'] = data.score
         result['salary'] = data.salary
-        result['birthday'] = data.player.birthday
-        result['country'] = data.player.country
-        result['height'] = data.player.height
-        result['weight'] = data.player.weight
-        result['armspan'] = data.player.armspan
-        result['reach_height'] = data.player.reach_height
-        result['draft'] = data.player.draft  # 选秀
         result['contract'] = data.contract
-        result['image_url'] = get_image_url(data)
+        result.pop('price')
 
         return TeamMessage(result).response
 
@@ -171,15 +232,21 @@ class SeasonDataApi(Resource):
     parser = reqparse.RequestParser()
     parser.add_argument("bag_player_id", type=int)
     parser.add_argument("type", type=int)
+    parser.add_argument("player_id", type=int)
 
     def get(self):
         args = self.parser.parse_args()
         bag_player_id = args['bag_player_id']
+        player_base_id = args['player_id']
 
-        bag_player = BagPlayer.query.filter_by(id=bag_player_id).first()
-        if bag_player is None:
-            return TeamMessage(error="背包无此球员", state=-832).response
-        player_id = bag_player.player.id
+        if player_base_id:
+            player_id = player_base_id
+        elif bag_player_id:
+            bag_player = BagPlayer.query.filter_by(id=bag_player_id).first()
+            if bag_player is None:
+                return TeamMessage(error="背包无此球员", state=-832).response
+
+            player_id = bag_player.player.id
 
         type = args['type']
 
@@ -193,33 +260,10 @@ class SeasonDataApi(Resource):
 
         if data is None or len(data) == 0:
             return TeamMessage(error="该球员无任何赛季数据", state=-803).response
-        result = []
 
-        for season in data:
-            season_data = {}
-            season_data['season'] = season.season
-            season_data['team_name'] = season.team_name
-            season_data['gp'] = season.gp  # 出场
-            season_data['min'] = season.min  # 时间
-            season_data['pts'] = season.pts  # 得分
-
-            season_data['reb'] = season.reb  # 篮板
-            season_data['ast'] = season.ast  # 助攻
-            season_data['stl'] = season.stl  # 抢断
-            season_data['blk'] = season.blk  # 盖帽
-            season_data['tov'] = season.tov  # 失误
-            season_data['fg_pct'] = season.fg_pct  # 投篮%
-            season_data['fg3_pct'] = season.fg3_pct  # 三分%
-            season_data['ft_pct'] = season.ft_pct  # 罚球%
-            season_data['efg_pct'] = season.efg_pct
-            season_data['ts_pct'] = season.ts_pct
-            season_data['ortg'] = season.ortg
-            season_data['drtg'] = season.drtg
-
-            result.append(season_data)
+        result = get_season_data(data)
 
         # 返回最近两年的数据
-        result.append({'image_url',get_image_url(bag_player)})
         return TeamMessage(result[:2]).response
 
 
