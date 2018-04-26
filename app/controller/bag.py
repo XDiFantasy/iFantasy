@@ -45,10 +45,37 @@ class BagMessage(Message):
     def __init__(self, result = None, error = '', state = 0):
         super(BagMessage, self).__init__(result, error, state)
 
+#
+# #列出背包里的piece
+# class BagPieceApi(Resource):
+#     def get(self, user_id):
+#         data = BagPiece.query.filter_by(user_id = user_id).all()
+#         if data is None or len(data) == 0:
+#             return BagMessage(None, *BagError.NO_PIECE).response
+#
+#         result = []
+#         for each in data:
+#             each_data = {}
+#             each_data['name'] = each.player_base.name
+#             each_data['num'] = each.num
+#             each_data['total'] = query(Piece).filter_by(player_id = each.player_id).first().total_num
+#             each_data['pos1'] = each.player_base.pos1
+#             each_data['pos2'] = each.player_base.pos2
+#
+#             result.append(each_data)
+#
+#         return BagMessage(result, *BagMessage.PIECE_LIST).response
+#
+
 
 #列出背包里的piece
 class BagPieceApi(Resource):
-    def get(self, user_id):
+    parser = reqparse.RequestParser()
+    parser.add_argument("user_id", type=int)
+
+    def get(self):
+        args = self.parser.parse_args()
+        user_id = args['user_id']
         data = BagPiece.query.filter_by(user_id = user_id).all()
         if data is None or len(data) == 0:
             return BagMessage(None, *BagError.NO_PIECE).response
@@ -65,6 +92,9 @@ class BagPieceApi(Resource):
             result.append(each_data)
 
         return BagMessage(result, *BagMessage.PIECE_LIST).response
+
+
+
 
 
 #使用piece合成player,
@@ -343,7 +373,8 @@ class UsingPropApi(Resource):
 
 
 # Setup the Api resource routing here
-bag_api.add_resource(BagPieceApi,'/piecelist/userid=<int:user_id>')
+bag_api.add_resource(BagPieceApi,'/piecelist')
+#bag_api.add_resource(BagPieceApi,'/piecelist/userid=<int:user_id>')
 bag_api.add_resource(UsingPieceApi,'/usingpiece/userid=<int:user_id>/playerid=<int:player_id>')
 
 bag_api.add_resource(BagTrailCardApi,'/trailcardlist/userid=<int:user_id>')
