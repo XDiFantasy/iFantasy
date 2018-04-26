@@ -117,7 +117,7 @@ def selectPlayer(type, pos=None):
     if type == 3:
         res = query(id).filter(score <= 70)
     if pos:
-        res = res.filter(db.or_(pos1 == pos, pos2 == pos))
+        res = res.filter((pos1 == pos)|(pos2 == pos))
     return __toSet__(res.all())
 
 
@@ -131,7 +131,7 @@ def addPlayer(user_id, player):
     return {"name": player.name, "pic": pic, "type": "player"}
 
 
-def getPlayer(user_id, filter, level):
+def getPlayer(user_id, level):
     if level == 1:
         player_class = [0, 1, 2]
         prob = [0.01, 0.09, 0.9]
@@ -140,22 +140,22 @@ def getPlayer(user_id, filter, level):
         prob = [0.02, 0.98]
     players = selectPlayer(__randomPick__(player_class, prob))
     player_id = choice(list(players))
-    if player_id not in filter:
+    ownplayer = getValidPlayer(user_id)
+    if player_id not in ownplayer:
         player = query(PlayerBase).get(player_id)
         return addPlayer(user_id, player)
     else:
         return player_id
 
 
-def genTrail(filter):
+def genTrial(ownplayer):
     player_class = [0, 1, 2, 3]
     prob = [0.3, 0.4, 0.2, 0.1]
     players = selectPlayer(__randomPick__(player_class, prob))
-    new_players = players - filter
+    new_players = players - ownplayer
     if new_players:
-        player_id = choice(list(new_players))
-    else:
-        player_id = choice(list(players))
+        players=new_players
+    player_id = choice(list(players))
     time_class = [1, 3, 5]
     prob = [0.85, 0.1, 0.05]
     time = __randomPick__(time_class, prob)
@@ -173,12 +173,13 @@ def genPiece():
     return {"id": player_id, "num": num}
 
 
-def getProp(user_id, filter):
+def getProp(user_id):
     prop_type = ['trail', 'piece', 'fund', 'exp']
     prob = [0.2, 0.6, 0.1, 0.1]
     ptype = __randomPick__(prop_type, prob)
     if ptype == 'trail':
-        res = genTrail(set(filter))
+        ownplayer = getValidPlayer(user_id)
+        res = genTrial(ownplayer)
         player = query(PlayerBase).get(res['id'])
         trail_card = query(BagTrailCard).get((user_id, player.id, res['time']))
         if trail_card:
@@ -223,6 +224,15 @@ def toPiece(user_id, player_id):
     pic = pic_url.format(player.team_id, player.id)
     return {'name': player.name, 'num': num, "pic": pic, "type": "piece"}
 
+def getValidPlayer(user_id):
+    players = set()
+    now = datetime.datetime.now()
+    bagplayer = query(BagPlayer).filter(BagPlayer.user_id==user_id).all()
+    for item in bagplayer:
+        if item.duedate > now:
+            players.add(item.player_id)
+    return players
+
 
 class OneRecruit(Resource):
     def post(self):
@@ -231,7 +241,6 @@ class OneRecruit(Resource):
         if r_info is None:
             return rMessage(error=State.ArgError).response
         u_info = r_info.user
-        b_info = [player.player_id for player in u_info.bagplayer]
         delta = (datetime.datetime.now() - r_info.time)
         delta = datetime.timedelta(days=delta.days, seconds=delta.seconds)
         if delta.days > 0 or delta.seconds > 18000:
@@ -242,11 +251,11 @@ class OneRecruit(Resource):
             else:
                 return rMessage(error=State.NoMoney).response
         if r_info.num == 2:
-            res = getPlayer(u_info.id, b_info, 1)
+            res = getPlayer(u_info.id, 1)
             if isinstance(res, int):
                 res = toPiece(u_info.id, res)
         else:
-            res = getProp(u_info.id, b_info)
+            res = getProp(u_info.id)
         r_info.num = (r_info.num + 1) % 3
         mes = __commit__(rMessage(res))  ####
         return mes.response
@@ -258,17 +267,16 @@ class FiveRecruie(Resource):
         u_info = query(User).get(args['user_id'])
         if u_info is None:
             return rMessage(error=State.ArgError).response
-        b_info = [player.player_id for player in u_info.bagplayer]
         if u_info.money >= 400:
             u_info.money -= 400
         else:
             return rMessage(error=State.NoMoney).response  # no money
-        res = getPlayer(u_info.id, b_info, 5)
+        res = getPlayer(u_info.id, 5)
         if isinstance(res, int):
             res = toPiece(u_info.id, res)
         items = [res]
         for i in range(4):
-            items.append(getProp(u_info.id, b_info))
+            items.append(getProp(u_info.id))
         mes = __commit__(rMessage(items))
         return mes.response
 
@@ -282,7 +290,7 @@ class RecruitPlayer(Resource):
             return rMessage(error=State.ArgError).response
         if user.money < player.price:
             return rMessage(error=State.NoMoney).response
-        player_ids = [player.player_id for player in user.bagplayer]
+        player_ids = getValidPlayer(user)
         if player.id in player_ids:
             return rMessage(error=State.OwnPlayer).response
         user.money -= player.price
@@ -293,7 +301,7 @@ class RecruitPlayer(Resource):
 
 def dataFilter(items, strs):
     if strs:
-        items = items.filter(db.or_(PlayerBase.pos1 == strs, PlayerBase.pos2 == strs))
+        items = items.filter((PlayerBase.pos1 == strs)|(PlayerBase.pos2 == strs))
     res = list()
     for item in items.all():
         pic = pic_url.format(item.team_id, item.id)
@@ -334,7 +342,7 @@ class BuyTheme(Resource):
         if user.money < theme.price:
             return rMessage(error=State.NoMoney).response
         user.money -= theme.price
-        bag_players = [player.player_id for player in user.bagplayer]
+        bag_players = getValidPlayer(user)
         res = list()
         for player_id in [theme.player_one_id, theme.player_two_id, theme.player_three_id]:
             if player_id in bag_players:
