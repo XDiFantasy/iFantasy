@@ -3,6 +3,7 @@ from flask_restful import Api, Resource, reqparse
 from app import db
 from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, BagProp, Theme
 from .message import Message
+from .recommend import recommend
 from random import choice, random, sample
 import datetime
 
@@ -400,6 +401,10 @@ class InitPlayer(Resource):
             res.append(addPlayer(user_id, player))
         mes = __commit__(rMessage(res))
         return mes.response
+
+    def get(self):
+        recommend().culcSim()
+        return rMessage('culcSim').response
 
 
 recruit_api.add_resource(GetRecruit, '/get_recruit_info')
