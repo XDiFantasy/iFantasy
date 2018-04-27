@@ -51,7 +51,8 @@ def get_player_base(player):
     result['pos'] = player.pos1  # 默认取球员第一个位置
     result['score'] = player.score
     result['price'] = player.price
-    result['birthday'] = player.birthday
+    result['birthday'] = player.birthday.strftime('%Y年%m月%d日')
+
     result['country'] = player.country
     result['height'] = player.height
     result['weight'] = player.weight
