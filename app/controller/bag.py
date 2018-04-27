@@ -37,6 +37,8 @@ class BagMessage(Message):
 
     EQUIP_LIST = 'Bag equip list', 306
     USING_EQUIP = 'Using equip', 307
+    PLAYER_EQUIP_LIST = 'player equip list', 310
+    UNEQUIP = 'unequip from player', 311
 
     PROP_LIST = 'Prop list', 308
     USING_PROP = 'Using prop', 309
@@ -267,6 +269,43 @@ class UsingEquipApi(Resource):
         commit()
         return BagMessage(result, *BagMessage.USING_EQUIP).response
 
+
+class UnEquipApi(Resource):
+    parser = reqparse.RequestParser()
+    parser.add_argument("bag_player_id", type=int)
+    parser.add_argument("type", type = int)
+
+    def post(self):
+        args = self.parser.parse_args()
+        bag_player_id = args['bag_player_id']
+        type = args['type']
+
+        unequip_player(bag_player_id = bag_player_id, type = type)
+
+        result = {}
+        pe_data = query(PlayerEquip).filter_by(bag_player_id=bag_player_id).first()
+
+        if pe_data.coat_id is not None:
+            result['coat_id'] = pe_data.coat_id
+            result['coat_attr_id'] = query(Equip).filter_by(id=pe_data.coat_id).first().attr_ch_id
+        else:
+            result['coat_id'] = None
+        if pe_data.pants_id is not None:
+            result['pants_id'] = pe_data.pants_id
+            result['pants_attr_id'] = query(Equip).filter_by(id=pe_data.pants_id).first().attr_ch_id
+        else:
+            result['pants_id'] = None
+        if pe_data.shoes_id is not None:
+            result['shoes_id'] = pe_data.shoes_id
+            result['shoes_attr_id'] = query(Equip).filter_by(id=pe_data.shoes_id).first().attr_ch_id
+        else:
+            result['shoes_id'] = None
+
+        commit()
+        return BagMessage(result, *BagMessage.UNEQUIP).response
+
+
+
 def add_equip_in_bag(user_id, equip_id):
     if query(BagEquip).filter_by(user_id = user_id, equip_id = equip_id).first() is None:
         add(BagEquip(user_id = user_id, equip_id = equip_id, num = 1))
@@ -351,7 +390,7 @@ class PlayerEquipApi(Resource):
         result['pants_id'] = data.pants_id
         result['shoes_id'] = data.shoes_id
 
-        return BagMessage(result, *BagMessage.EQUIP_LIST).response
+        return BagMessage(result, *BagMessage.PLAYER_EQUIP_LIST).response
 
 
 #列出bag里的prop
@@ -427,6 +466,7 @@ bag_api.add_resource(UsingTrailCardApi,'/usingtrailcard')
 
 bag_api.add_resource(BagEquipApi,'/equiplist')
 bag_api.add_resource(UsingEquipApi,'/usingequip')
+bag_api.add_resource(UnEquipApi,'/unequip')
 bag_api.add_resource(PlayerEquipApi,'/playerequiplist')
 
 bag_api.add_resource(BagPropApi,'/proplist')
