@@ -67,8 +67,7 @@ def get_player_base(player):
 
 # 返回球员的图片地址
 def get_image_url(player):
-    base_image_url = 'https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/{team_id}/2017/260x190/{player_id}.png'
-    image_url = base_image_url.format(team_id=player.team_id, player_id=player.id)
+    image_url = player.id
     return image_url
 
 
