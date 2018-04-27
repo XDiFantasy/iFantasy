@@ -45,37 +45,16 @@ class BagMessage(Message):
     def __init__(self, result = None, error = '', state = 0):
         super(BagMessage, self).__init__(result, error, state)
 
-#
-# #列出背包里的piece
-# class BagPieceApi(Resource):
-#     def get(self, user_id):
-#         data = BagPiece.query.filter_by(user_id = user_id).all()
-#         if data is None or len(data) == 0:
-#             return BagMessage(None, *BagError.NO_PIECE).response
-#
-#         result = []
-#         for each in data:
-#             each_data = {}
-#             each_data['name'] = each.player_base.name
-#             each_data['num'] = each.num
-#             each_data['total'] = query(Piece).filter_by(player_id = each.player_id).first().total_num
-#             each_data['pos1'] = each.player_base.pos1
-#             each_data['pos2'] = each.player_base.pos2
-#
-#             result.append(each_data)
-#
-#         return BagMessage(result, *BagMessage.PIECE_LIST).response
-#
-
 
 #列出背包里的piece
 class BagPieceApi(Resource):
     parser = reqparse.RequestParser()
-    parser.add_argument("user_id", type=int)
+    parser.add_argument("user_id", type = int)
 
     def get(self):
         args = self.parser.parse_args()
         user_id = args['user_id']
+
         data = BagPiece.query.filter_by(user_id = user_id).all()
         if data is None or len(data) == 0:
             return BagMessage(None, *BagError.NO_PIECE).response
@@ -94,12 +73,16 @@ class BagPieceApi(Resource):
         return BagMessage(result, *BagMessage.PIECE_LIST).response
 
 
-
-
-
 #使用piece合成player,
 class UsingPieceApi(Resource):
-    def post(self, user_id, player_id):
+    parser = reqparse.RequestParser()
+    parser.add_argument("user_id", type = int)
+    parser.add_argument("player_id", type = int)
+
+    def post(self):
+        args = self.parser.parse_args()
+        user_id = args['user_id']
+        player_id = args['player_id']
         # 判断该user是否已经有这个player
         if BagPlayer.query.filter_by(user_id = user_id, player_id = player_id).first() is not None :
             return BagMessage(None, *BagError.PLAYER_REPEAT).response
@@ -134,9 +117,16 @@ class UsingPieceApi(Resource):
         commit()
         return BagMessage(player.name, *BagMessage.USING_PIECE_ADD_PLAYER).response
 
+
 #列出bag里的trail_card
 class BagTrailCardApi(Resource):
-    def get(self, user_id):
+    parser = reqparse.RequestParser()
+    parser.add_argument("user_id", type = int)
+
+    def get(self):
+        args = self.parser.parse_args()
+        user_id = args['user_id']
+
         data = BagTrailCard.query.filter_by(user_id = user_id).all()
         if data is None or len(data) == 0:
             return BagMessage(None, *BagError.NO_TRAIL_CARD).response
@@ -152,9 +142,18 @@ class BagTrailCardApi(Resource):
             result.append(each_data)
         return BagMessage(result, *BagMessage.TRAIL_CARD_LIST).response
 
+
 #使用trail card 增加player/duetime
 class UsingTrailCardApi(Resource):
-    def post(self, user_id, player_id):
+    parser = reqparse.RequestParser()
+    parser.add_argument("user_id", type = int)
+    parser.add_argument("player_id", type = int)
+
+    def post(self):
+        args = self.parser.parse_args()
+        user_id = args['user_id']
+        player_id = args['player_id']
+
         playerdata = query(BagPlayer).filter_by(user_id = user_id, player_id = player_id).first()
         trail_card = query(BagTrailCard).filter_by(user_id = user_id,player_id = player_id).first()
         if trail_card is None or trail_card.num <= 0:
@@ -186,7 +185,15 @@ class UsingTrailCardApi(Resource):
 
 #列出bag里的equip
 class BagEquipApi(Resource):
-    def get(self, user_id, type):
+    parser = reqparse.RequestParser()
+    parser.add_argument("user_id", type = int)
+    parser.add_argument("type", type = int)
+
+    def get(self):
+        args = self.parser.parse_args()
+        user_id = args['user_id']
+        type = args['type']
+
         data = query(BagEquip).filter_by(user_id = user_id).all()
 
         if data is None or len(data) == 0:
@@ -204,10 +211,26 @@ class BagEquipApi(Resource):
 
         return BagMessage(result, *BagMessage.EQUIP_LIST).response
 
+
 #使用bag里的equip
 class UsingEquipApi(Resource):
-    def post(self, user_id, equip_id, player_id):
-        bag_player_id = query(BagPlayer).filter_by(user_id = user_id,player_id = player_id).first().id
+    parser = reqparse.RequestParser()
+    parser.add_argument("user_id", type=int)
+    parser.add_argument("equip_id", type=int)
+    parser.add_argument("player_id", type=int)
+
+    def post(self):
+        args = self.parser.parse_args()
+        user_id = args['user_id']
+        equip_id = args['equip_id']
+        player_id = args['player_id']
+
+
+        bag_player_data = query(BagPlayer).filter_by(user_id = user_id,player_id = player_id).first()
+        if bag_player_data is None:
+            return BagMessage(None, *BagError.NO_PLAYER).response
+        bag_player_id = bag_player_data.id
+
         if query(PlayerEquip).filter_by(bag_player_id = bag_player_id).first() is None:
             add(PlayerEquip(bag_player_id = bag_player_id,coat_id = None,pants_id = None,shoes_id = None))
 
@@ -309,9 +332,16 @@ def unequip_player(bag_player_id, type):
 
     return None
 
+
 #展示bag中拥有的球员穿着在身上的装备信息
 class PlayerEquipApi(Resource):
-    def get(self, bag_player_id):
+    parser = reqparse.RequestParser()
+    parser.add_argument("bag_player_id", type = int)
+
+    def get(self):
+        args = self.parser.parse_args()
+        bag_player_id = args['bag_player_id']
+
         data = query(PlayerEquip).filter_by(bag_player_id = bag_player_id).first()
         if data is None:
             return BagMessage(None, *BagError.NO_EQUIP).response
@@ -323,9 +353,16 @@ class PlayerEquipApi(Resource):
 
         return BagMessage(result, *BagMessage.EQUIP_LIST).response
 
+
 #列出bag里的prop
 class BagPropApi(Resource):
-    def get(self, user_id):
+    parser = reqparse.RequestParser()
+    parser.add_argument("user_id", type = int)
+
+    def get(self):
+        args = self.parser.parse_args()
+        user_id = args['user_id']
+
         data = query(BagProp).filter_by(user_id = user_id).first()
         #若没有，则记为各拥有０个fund_card,exp_card
         if data is None:
@@ -340,7 +377,15 @@ class BagPropApi(Resource):
 
 #使用bag里的prop
 class UsingPropApi(Resource):
-    def post(self, user_id, prop_type):
+    parser = reqparse.RequestParser()
+    parser.add_argument("user_id", type=int)
+    parser.add_argument("prop_type", type=int)
+
+    def post(self):
+        args = self.parser.parse_args()
+        user_id = args['user_id']
+        prop_type = args['prop_type']
+
         #有效期限为3天
         time = 3
         data = query(BagProp).filter_by(user_id = user_id).first()
@@ -373,16 +418,16 @@ class UsingPropApi(Resource):
 
 
 # Setup the Api resource routing here
+
 bag_api.add_resource(BagPieceApi,'/piecelist')
-#bag_api.add_resource(BagPieceApi,'/piecelist/userid=<int:user_id>')
-bag_api.add_resource(UsingPieceApi,'/usingpiece/userid=<int:user_id>/playerid=<int:player_id>')
+bag_api.add_resource(UsingPieceApi,'/usingpiece')
 
-bag_api.add_resource(BagTrailCardApi,'/trailcardlist/userid=<int:user_id>')
-bag_api.add_resource(UsingTrailCardApi,'/usingtrailcard/userid=<int:user_id>/playerid=<int:player_id>')
+bag_api.add_resource(BagTrailCardApi,'/trailcardlist')
+bag_api.add_resource(UsingTrailCardApi,'/usingtrailcard')
 
-bag_api.add_resource(BagEquipApi,'/equiplist/userid=<int:user_id>/type=<int:type>')
-bag_api.add_resource(UsingEquipApi,'/usingequip/userid=<int:user_id>/equipid=<int:equip_id>/playerid=<int:player_id>')
-bag_api.add_resource(PlayerEquipApi,'/playerequiplist/bagplayerid=<int:bag_player_id>')
+bag_api.add_resource(BagEquipApi,'/equiplist')
+bag_api.add_resource(UsingEquipApi,'/usingequip')
+bag_api.add_resource(PlayerEquipApi,'/playerequiplist')
 
-bag_api.add_resource(BagPropApi,'/proplist/userid=<int:user_id>')
-bag_api.add_resource(UsingPropApi,'/usingprop/userid=<int:user_id>/propid=<int:prop_type>')
+bag_api.add_resource(BagPropApi,'/proplist')
+bag_api.add_resource(UsingPropApi,'/usingprop')
