@@ -222,7 +222,7 @@ class LogoutApi(Resource):
     parse = reqparse.RequestParser()
     parse.add_argument('user_id', type=int)
 
-    def post(self):
+    def delete(self):
         args = self.parse.parse_args(strict=True)
         user_id = args['user_id']
         user = query(User).get(user_id)
