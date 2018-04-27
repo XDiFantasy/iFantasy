@@ -93,7 +93,7 @@ def __randomPick__(lists, prob):
     return item
 
 
-def __commit__(mes):
+def __commit__(mes=None):
     try:
         commit()
         return mes
