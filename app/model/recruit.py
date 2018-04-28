@@ -23,12 +23,12 @@ class UserStat(db.Model):
 
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True,nullable=False)
     rated_num = db.Column(db.Integer)
-    buy_num = db.Column(db.Integer)
 
-    def __init__(self,user_id,rated_num,buy_num):
+
+    def __init__(self,user_id,rated_num):
         self.user_id=user_id
         self.rated_num=rated_num
-        self.buy_num=buy_num
+
 
     def __repr__(self):
         return "<UserStat %r>" % self.user_id
@@ -50,15 +50,17 @@ class Sim(db.Model):
     def __repr__(self):
         return "<Sim %r, %r>" % (self.player_one,self.player_two)
 
-class PlayerStat(db.Model):
+class PlayerStat(db.Model):##预先建立好
     __tablename__ = "player_stat"
 
     player_id = db.Column(db.Integer, db.ForeignKey('player_base.id'), primary_key=True,nullable=False)
     mode = db.Column(db.Integer)
+    popular= db.Column(db.Integer)
 
-    def __init__(self,player_id,mode):
+    def __init__(self,player_id,mode,popular):
         self.player_id=player_id
         self.mode = mode
+        self.popular=popular
 
     def __repr__(self):
         return "<PlayerStat %r>" % self.player_id

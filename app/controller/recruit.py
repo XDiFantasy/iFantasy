@@ -1,7 +1,7 @@
 from flask import Blueprint
 from flask_restful import Api, Resource, reqparse
 from app import db
-from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, BagProp, Theme
+from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, BagProp, Theme,PlayerStat
 from .message import Message
 from .recommend import recommend
 from random import choice, random, sample
@@ -295,15 +295,17 @@ class RecruitPlayer(Resource):
             return rMessage(error=State.OwnPlayer).response
         user.money -= player.price
         res = addPlayer(user.id, player)
+        po=query(PlayerStat).get(player.id)##add popular
+        po.popular = min(po.popular+1,100000000)
         mes = __commit__(rMessage(res))  ####
         return mes.response
 
 
 def dataFilter(items, strs):
-    if strs:
-        items = items.filter((PlayerBase.pos1 == strs)|(PlayerBase.pos2 == strs))
     res = list()
-    for item in items.all():
+    for item in items:
+        if strs and item.pos1 !=strs and item.pos2!=strs:
+            continue
         pic = pic_url.format(item.team_id, item.id)
         res.append({"id": item.id, "name": item.name, "pos1": item.pos1, "pos2": item.pos2, "price": item.price,
                     "score": item.score, "pic": pic})
@@ -321,7 +323,10 @@ class ShowPlayer(Resource):
         if index not in [0, 1, 2]:
             return rMessage(error=State.ArgError).response
         order = [PlayerBase.id, PlayerBase.score, PlayerBase.price]
-        data = query(PlayerBase).order_by(db.desc(order[index]))
+        if index ==0:
+            pass
+        else:
+            data = query(PlayerBase).order_by(db.desc(order[index])).all()
         if pos == 0:
             return rMessage(dataFilter(data, None)).response
         if pos == 1:
@@ -345,6 +350,8 @@ class BuyTheme(Resource):
         bag_players = getValidPlayer(user)
         res = list()
         for player_id in [theme.player_one_id, theme.player_two_id, theme.player_three_id]:
+            po = query(PlayerStat).get(player_id)  ##add popular
+            po.popular = min(po.popular + 0.5, 100000000)
             if player_id in bag_players:
                 data = toPiece(user.id, player_id)
             else:
@@ -390,6 +397,8 @@ class RenewContract(Resource):
         contract = '一年%d万，%d年%d月%d日续约，%d年%d月%d日到期' % (price, today.year,
                                                       today.month, today.day, duedate.year, duedate.month, duedate.day)
         bag_player.contract = contract
+        po = query(PlayerStat).get(bag_player.player_id)  ##add popular
+        po.popular = min(po.popular + 5, 100000000)
         mes = __commit__(rMessage({'contract': contract}))
         return mes.response
 
