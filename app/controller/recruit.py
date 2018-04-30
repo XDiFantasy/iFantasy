@@ -3,7 +3,7 @@ from flask_restful import Api, Resource, reqparse
 from app import db
 from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, BagProp, Theme,PlayerStat
 from .message import Message
-from .recommend import recommend
+from .recommend import Recommend
 from random import choice, random, sample
 import datetime
 
@@ -21,7 +21,7 @@ parser.add_argument('pos', type=int)  # 0-all,1-c,2-pf,3-sf,4-pg,5-sg
 parser.add_argument('theme_id', type=int)
 parser.add_argument('bag_player_id', type=int)
 pic_url = "https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/{0}/2017/260x190/{1}.png"
-
+recom = Recommend()
 
 class State:
     ArgError = "arg is incorrect", -250
@@ -179,7 +179,9 @@ def getProp(user_id):
     ptype = __randomPick__(prop_type, prob)
     if ptype == 'trail':
         ownplayer = getValidPlayer(user_id)
-        res = genTrial(ownplayer)
+        res = recom.genTrial(user_id)
+        if not res:
+            res = genTrial(ownplayer)
         player = query(PlayerBase).get(res['id'])
         trail_card = query(BagTrailCard).get((user_id, player.id, res['time']))
         if trail_card:
@@ -315,6 +317,7 @@ def dataFilter(items, strs):
 class ShowPlayer(Resource):
     def get(self):
         index = parser.parse_args()['type']
+        user_id = parser.parse_args()['user_id']
         pos = parser.parse_args()['pos']
         if not index:
             index = 0
@@ -323,8 +326,8 @@ class ShowPlayer(Resource):
         if index not in [0, 1, 2]:
             return rMessage(error=State.ArgError).response
         order = [PlayerBase.id, PlayerBase.score, PlayerBase.price]
-        if index ==0:
-            pass
+        if index ==0 and query(User).get(user_id):
+            data = recom.sortRecommend(user_id)
         else:
             data = query(PlayerBase).order_by(db.desc(order[index])).all()
         if pos == 0:
@@ -418,10 +421,6 @@ class InitPlayer(Resource):
             res.append(addPlayer(user_id, player))
         mes = __commit__(rMessage(res))
         return mes.response
-
-    def get(self):
-        recommend().culcSim()
-        return rMessage('culcSim').response
 
 
 recruit_api.add_resource(GetRecruit, '/get_recruit_info')

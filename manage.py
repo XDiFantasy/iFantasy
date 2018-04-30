@@ -12,7 +12,8 @@ def make_shell_context():
     BagProp=BagProp,PropUsing=PropUsing,InputData=InputData,
     Recruit=Recruit,Equip=Equip,Piece=Piece,BagTrailCard=BagTrailCard,Friend=Friend,
     UserGame=UserGame, DStrategy=DStrategy,OStrategy=OStrategy,AttrCh=AttrCh, UserMatch=UserMatch,
-    PlayerBase=PlayerBase,TeamInfo=TeamInfo,User=User, LineUp=LineUp, Sim=Sim,PlayerStat=PlayerStat,UserStat=UserStat
+    PlayerBase=PlayerBase,TeamInfo=TeamInfo,User=User, LineUp=LineUp,
+    Sim=Sim,PlayerStat=PlayerStat,UserStat=UserStat,Like = Like
     )
 
 app= create_app("develop")

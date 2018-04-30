@@ -19,7 +19,7 @@ class Recruit(db.Model):
         return "<Recruit %r>" % self.user_id
 
 class UserStat(db.Model):
-    __tablename__ = "user_stat"
+    __tablename__ = "recom_user"
 
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True,nullable=False)
     rated_num = db.Column(db.Integer)
@@ -35,7 +35,7 @@ class UserStat(db.Model):
 
 
 class Sim(db.Model):
-    __tablename__ = "sim"
+    __tablename__ = "recom_sim"
 
     id = db.Column(db.Integer, primary_key=True, nullable=False, autoincrement=True)
     player_one = db.Column(db.Integer, db.ForeignKey('player_base.id'), nullable=False)
@@ -50,8 +50,8 @@ class Sim(db.Model):
     def __repr__(self):
         return "<Sim %r, %r>" % (self.player_one,self.player_two)
 
-class PlayerStat(db.Model):##预先建立好
-    __tablename__ = "player_stat"
+class PlayerStat(db.Model):##预先建立好,static
+    __tablename__ = "recom_player"
 
     player_id = db.Column(db.Integer, db.ForeignKey('player_base.id'), primary_key=True,nullable=False)
     mode = db.Column(db.Integer)
@@ -64,3 +64,19 @@ class PlayerStat(db.Model):##预先建立好
 
     def __repr__(self):
         return "<PlayerStat %r>" % self.player_id
+
+class Like(db.Model):##static
+    __tablename__ = "recom_like"
+
+    id = db.Column(db.Integer, primary_key=True, nullable=False, autoincrement=True)
+    player_one = db.Column(db.Integer, db.ForeignKey('player_base.id'), nullable=False)
+    player_two = db.Column(db.Integer, db.ForeignKey('player_base.id'), nullable=False)
+    like = db.Column(db.FLOAT)
+
+    def __init__(self,player_one,player_two,like):
+        self.player_one=player_one
+        self.player_two=player_two
+        self.like=like
+
+    def __repr__(self):
+        return "<Like %r, %r>" % (self.player_one,self.player_two)
