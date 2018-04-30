@@ -127,13 +127,13 @@ class VerificationApi(Resource):
                 add(user)
                 try:
                     commit()
-                    msg = Message(user.user2dict(), None, 201)
+                    msg = Message(user.user_full2dict(), None, 201)
                 except Exception as e:
                     rollback()
                     print(e)
                     msg = Message(None, "cannot commit to db", -1)
                 return msg.response
-            return Message(user.user2dict(), None, 200).response
+            return Message(user.user_full2dict(), None, 200).response
         elif res == 467:
             return Message(None, "请求校验验证码频繁", 467).response
         elif res == 468:
@@ -161,7 +161,7 @@ class RegisterApi(Resource):
                 user.nickname = nickname
                 try:
                     commit()
-                    msg = Message(user.user2dict(), None, 200)
+                    msg = Message(user.user_full2dict(), None, 200)
                 except Exception as e:
                     rollback()
                     print(e)
@@ -185,7 +185,7 @@ class LoginApi(Resource):
                 user.accesstoken = Auth.generateAccessToken(user)
                 try:
                     commit()
-                    msg = Message(user.user2dict(), None, 200)
+                    msg = Message(user.user_full2dict(), None, 200)
                 except Exception as e:
                     rollback()
                     print(e)
@@ -222,7 +222,7 @@ class LogoutApi(Resource):
     parse = reqparse.RequestParser()
     parse.add_argument('user_id', type=int)
 
-    def post(self):
+    def delete(self):
         args = self.parse.parse_args(strict=True)
         user_id = args['user_id']
         user = query(User).get(user_id)
@@ -231,7 +231,7 @@ class LogoutApi(Resource):
         user.accesstoken = None
         try:
             commit()
-            msg = Message(user.user2dict(), None, 200)
+            msg = Message(user.user_full2dict(), None, 200)
         except Exception as e:
             rollback()
             print(e)
@@ -239,8 +239,23 @@ class LogoutApi(Resource):
         return msg.response
 
 
+class QueryUserApi(Resource):
+    parse = reqparse.RequestParser()
+    parse.add_argument('nickname', type=str)
+
+    def get(self):
+        args = self.parse.parse_args(strict=True)
+        nickname = args['nickname']
+        if nickname:
+            user = query(User).filter_by(nickname=nickname).first()
+            if user:
+                return Message(user.user_part2dict(), None, 200).response
+        return Message(*UserError.ILLEGAL_USER).response
+
+
 user_api.add_resource(VerificationApi, '/verification')
 user_api.add_resource(RegisterApi, '/register')
 user_api.add_resource(LoginApi, '/login')
 user_api.add_resource(RefreshAccessTokenApi, '/refresh')
 user_api.add_resource(LogoutApi, '/logout')
+user_api.add_resource(QueryUserApi, '/query')

@@ -2,6 +2,7 @@ from flask import Blueprint
 from flask_restful import Api, Resource, reqparse
 from app.model import BagPlayer, SeasonData, User, LineUp, TeamInfo, PlayerBase
 from app.controller import Message
+from app.controller.bag import unequip_player
 from app import db
 from sqlalchemy import or_
 import datetime
@@ -9,11 +10,8 @@ import datetime
 team_bp = Blueprint("team_bp", __name__)
 team_api = Api(team_bp)
 
-'''
-获取球员赛季数据
-'''
 
-
+# 获取球员赛季数据
 def get_season_data(data):
     result = []
 
@@ -42,11 +40,8 @@ def get_season_data(data):
     return result
 
 
-'''
-获取球员基本信息
-'''
 
-
+# 获取球员基本信息
 def get_player_base(player):
     result = {}
 
@@ -56,7 +51,8 @@ def get_player_base(player):
     result['pos'] = player.pos1  # 默认取球员第一个位置
     result['score'] = player.score
     result['price'] = player.price
-    result['birthday'] = player.birthday
+    result['birthday'] = player.birthday.strftime('%Y年%m月%d日')
+
     result['country'] = player.country
     result['height'] = player.height
     result['weight'] = player.weight
@@ -68,22 +64,15 @@ def get_player_base(player):
     return result
 
 
-'''
-返回球员的图片地址
-'''
 
-
+# 返回球员的图片地址
 def get_image_url(player):
-    base_image_url = 'https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/{team_id}/2017/260x190/{player_id}.png'
-    image_url = base_image_url.format(team_id=player.team_id, player_id=player.id)
+    image_url = player.id
     return image_url
 
 
-'''
- 返回球员的位置
-'''
 
-
+# 返回球员的位置
 def get_pos(bag_player):
     pos = []
     pos.append(bag_player.player.pos1)
@@ -92,10 +81,8 @@ def get_pos(bag_player):
     return pos
 
 
-'''
-返回球员的信息:名字 位置 背包ID
-'''
 
+# 返回球员的信息:名字 位置 背包ID
 
 def get_player_info(bag_player_id, pos):
     bag_player = BagPlayer.query.filter_by(id=bag_player_id).first()
@@ -109,11 +96,8 @@ def get_player_info(bag_player_id, pos):
     return True, res
 
 
-'''
-删除阵容某个具体的球员
-'''
 
-
+# 删除阵容某个具体的球员
 def delete_player(lineup, bag_player_id):
     if lineup.c == bag_player_id:
         lineup.c = None
@@ -576,6 +560,9 @@ class DeletePlayerApi(Resource):
         if lineups is not None:
             for lineup in lineups:
                 delete_player(lineup, bag_player_id)
+
+        for i in range(1,4):
+            unequip_player(bag_player_id,i)
 
         db.session.delete(bag_player)
         user.money += money
