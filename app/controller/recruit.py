@@ -21,7 +21,7 @@ parser.add_argument('pos', type=int)  # 0-all,1-c,2-pf,3-sf,4-pg,5-sg
 parser.add_argument('theme_id', type=int)
 parser.add_argument('bag_player_id', type=int)
 pic_url = "https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/{0}/2017/260x190/{1}.png"
-recom = Recommend()
+
 
 class State:
     ArgError = "arg is incorrect", -250
@@ -179,7 +179,11 @@ def getProp(user_id):
     ptype = __randomPick__(prop_type, prob)
     if ptype == 'trail':
         ownplayer = getValidPlayer(user_id)
-        res = recom.genTrial(user_id)
+        if Recom.onrecom:
+            res = Recom.recom.genTrial(user_id)
+            print('recom trial')
+        else:
+            res = genTrial(ownplayer)
         if not res:
             res = genTrial(ownplayer)
         player = query(PlayerBase).get(res['id'])
@@ -191,7 +195,11 @@ def getProp(user_id):
         pic = pic_url.format(player.team_id, player.id)
         return {'name': player.name, 'time': res['time'], "pic": pic, "type": "trail"}
     if ptype == 'piece':
-        res = genPiece()
+        if Recom.onrecom:
+            res = Recom.recom.genPiece()
+            print('recom piece')
+        else:
+            res = genPiece()
         player = query(PlayerBase).get(res['id'])
         piece = query(BagPiece).get((user_id, player.id))
         if piece:
@@ -292,13 +300,12 @@ class RecruitPlayer(Resource):
             return rMessage(error=State.ArgError).response
         if user.money < player.price:
             return rMessage(error=State.NoMoney).response
-        player_ids = getValidPlayer(user)
+        player_ids = getValidPlayer(user.id)
         if player.id in player_ids:
             return rMessage(error=State.OwnPlayer).response
         user.money -= player.price
         res = addPlayer(user.id, player)
-        po=query(PlayerStat).get(player.id)##add popular
-        po.popular = min(po.popular+1,100000000)
+        addPopular(player.id,1)
         mes = __commit__(rMessage(res))  ####
         return mes.response
 
@@ -326,10 +333,10 @@ class ShowPlayer(Resource):
         if index not in [0, 1, 2]:
             return rMessage(error=State.ArgError).response
         order = [PlayerBase.id, PlayerBase.score, PlayerBase.price]
-        if index ==0 and query(User).get(user_id):
-            data = recom.sortRecommend(user_id)
-        else:
-            data = query(PlayerBase).order_by(db.desc(order[index])).all()
+        data = query(PlayerBase).order_by(db.desc(order[index])).all()
+        if Recom.onrecom and index ==0 and query(User).get(user_id):
+            data = Recom.recom.sortRecommend(user_id,data)
+            print('recom list')
         if pos == 0:
             return rMessage(dataFilter(data, None)).response
         if pos == 1:
@@ -350,11 +357,10 @@ class BuyTheme(Resource):
         if user.money < theme.price:
             return rMessage(error=State.NoMoney).response
         user.money -= theme.price
-        bag_players = getValidPlayer(user)
+        bag_players = getValidPlayer(user.id)
         res = list()
         for player_id in [theme.player_one_id, theme.player_two_id, theme.player_three_id]:
-            po = query(PlayerStat).get(player_id)  ##add popular
-            po.popular = min(po.popular + 0.5, 100000000)
+            addPopular(player_id,0.5)
             if player_id in bag_players:
                 data = toPiece(user.id, player_id)
             else:
@@ -400,8 +406,7 @@ class RenewContract(Resource):
         contract = '一年%d万，%d年%d月%d日续约，%d年%d月%d日到期' % (price, today.year,
                                                       today.month, today.day, duedate.year, duedate.month, duedate.day)
         bag_player.contract = contract
-        po = query(PlayerStat).get(bag_player.player_id)  ##add popular
-        po.popular = min(po.popular + 5, 100000000)
+        addPopular(bag_player.player_id,5)  ##add popular
         mes = __commit__(rMessage({'contract': contract}))
         return mes.response
 
@@ -422,6 +427,12 @@ class InitPlayer(Resource):
         mes = __commit__(rMessage(res))
         return mes.response
 
+def addPopular(player_id,popular):
+    po = query(PlayerStat).get(player_id)
+    if not po:
+        add(PlayerStat(player_id, 0, popular))
+    else:
+        po.popular = min(po.popular + popular, 100000000)
 
 recruit_api.add_resource(GetRecruit, '/get_recruit_info')
 recruit_api.add_resource(OneRecruit, '/one_recruit')
@@ -431,3 +442,37 @@ recruit_api.add_resource(ShowPlayer, '/show_all_payer')
 recruit_api.add_resource(BuyTheme, '/buy_theme')
 recruit_api.add_resource(RenewContract, '/renew_contract')
 recruit_api.add_resource(InitPlayer, '/init_player')
+
+
+class Recom(Resource):
+    recom = None
+    onrecom = False
+    
+    def __init__(self):
+        if not Recom.recom:
+            print('start init recommendation system, waiting ...')
+            Recom.recom = Recommend()
+            print('init successfully')
+
+    def get(self):
+        token = parser.parse_args()['user_id']
+        kind = parser.parse_args()['type']
+        if token != 923458897 or kind not in range(5):
+            return rMessage("error").response
+        if kind ==0:
+            Recom.onrecom = True
+        if kind == 1:
+            Recom.recom.genSim()
+        if kind ==2:
+            Recom.recom.genLikes()
+        if kind ==3:
+            Recom.recom.genMode()
+        if kind ==4:
+            Recom.recom.calcRate()
+        if kind==5:
+            Recom.onrecom = False
+        return rMessage("ok").response
+
+
+
+recruit_api.add_resource(Recom, '/manage_recom')
