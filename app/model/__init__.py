@@ -5,7 +5,7 @@ from .game import UserGame, UserMatch, InputData
 from .tactics import OStrategy, AttrCh,DStrategy
 from .team import PlayerBase,TeamInfo, SeasonData, BagPlayer, LineUp
 from .user import User
-from .recruit import Recruit,Sim,PlayerStat,UserStat,Like
+from .recruit import Recruit,Sim,PlayerStat,Like
 
 if __name__ == "__main__":
     user1 = User('user1','120',1,1200)

@@ -1,7 +1,7 @@
 from flask import Blueprint
 from flask_restful import Api, Resource, reqparse
 from app import db
-from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, BagProp, Theme,PlayerStat
+from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, BagProp, Theme, PlayerStat
 from .message import Message
 from .recommend import Recommend
 from random import choice, random, sample
@@ -109,15 +109,15 @@ def selectPlayer(type, pos=None):
     pos1 = PlayerBase.pos1
     pos2 = PlayerBase.pos2
     if type == 0:
-        res = query(id).filter(score > 90)
+        res = query(id).filter(score >= 90)
     if type == 1:
-        res = query(id).filter(score <= 90, score > 80)
+        res = query(id).filter(score < 90, score >= 80)
     if type == 2:
-        res = query(id).filter(score <= 80, score > 70)
+        res = query(id).filter(score < 80, score >= 70)
     if type == 3:
-        res = query(id).filter(score <= 70)
+        res = query(id).filter(score < 70)
     if pos:
-        res = res.filter((pos1 == pos)|(pos2 == pos))
+        res = res.filter((pos1 == pos) | (pos2 == pos))
     return __toSet__(res.all())
 
 
@@ -148,13 +148,14 @@ def getPlayer(user_id, level):
         return player_id
 
 
-def genTrial(ownplayer):
+def genTrial(user_id):
+    ownplayer = getValidPlayer(user_id)
     player_class = [0, 1, 2, 3]
     prob = [0.3, 0.4, 0.2, 0.1]
     players = selectPlayer(__randomPick__(player_class, prob))
     new_players = players - ownplayer
     if new_players:
-        players=new_players
+        players = new_players
     player_id = choice(list(players))
     time_class = [1, 3, 5]
     prob = [0.85, 0.1, 0.05]
@@ -178,14 +179,13 @@ def getProp(user_id):
     prob = [0.2, 0.6, 0.1, 0.1]
     ptype = __randomPick__(prop_type, prob)
     if ptype == 'trail':
-        ownplayer = getValidPlayer(user_id)
-        if Recom.onrecom:
+        if Recom.turn_on:
             res = Recom.recom.genTrial(user_id)
             print('recom trial')
         else:
-            res = genTrial(ownplayer)
+            res = genTrial(user_id)
         if not res:
-            res = genTrial(ownplayer)
+            res = genTrial(user_id)
         player = query(PlayerBase).get(res['id'])
         trail_card = query(BagTrailCard).get((user_id, player.id, res['time']))
         if trail_card:
@@ -195,7 +195,7 @@ def getProp(user_id):
         pic = pic_url.format(player.team_id, player.id)
         return {'name': player.name, 'time': res['time'], "pic": pic, "type": "trail"}
     if ptype == 'piece':
-        if Recom.onrecom:
+        if Recom.turn_on:
             res = Recom.recom.genPiece()
             print('recom piece')
         else:
@@ -234,10 +234,11 @@ def toPiece(user_id, player_id):
     pic = pic_url.format(player.team_id, player.id)
     return {'name': player.name, 'num': num, "pic": pic, "type": "piece"}
 
+
 def getValidPlayer(user_id):
     players = set()
     now = datetime.datetime.now()
-    bagplayer = query(BagPlayer).filter(BagPlayer.user_id==user_id).all()
+    bagplayer = query(BagPlayer).filter(BagPlayer.user_id == user_id).all()
     for item in bagplayer:
         if item.duedate > now:
             players.add(item.player_id)
@@ -305,7 +306,7 @@ class RecruitPlayer(Resource):
             return rMessage(error=State.OwnPlayer).response
         user.money -= player.price
         res = addPlayer(user.id, player)
-        addPopular(player.id,1)
+        addPopular(player.id, 1)
         mes = __commit__(rMessage(res))  ####
         return mes.response
 
@@ -313,7 +314,7 @@ class RecruitPlayer(Resource):
 def dataFilter(items, strs):
     res = list()
     for item in items:
-        if strs and item.pos1 !=strs and item.pos2!=strs:
+        if strs and item.pos1 != strs and item.pos2 != strs:
             continue
         pic = pic_url.format(item.team_id, item.id)
         res.append({"id": item.id, "name": item.name, "pos1": item.pos1, "pos2": item.pos2, "price": item.price,
@@ -334,8 +335,8 @@ class ShowPlayer(Resource):
             return rMessage(error=State.ArgError).response
         order = [PlayerBase.id, PlayerBase.score, PlayerBase.price]
         data = query(PlayerBase).order_by(db.desc(order[index])).all()
-        if Recom.onrecom and index ==0 and query(User).get(user_id):
-            data = Recom.recom.sortRecommend(user_id,data)
+        if Recom.turn_on and index == 0:
+            data = Recom.recom.sortRecommend(user_id, data)
             print('recom list')
         if pos == 0:
             return rMessage(dataFilter(data, None)).response
@@ -360,7 +361,7 @@ class BuyTheme(Resource):
         bag_players = getValidPlayer(user.id)
         res = list()
         for player_id in [theme.player_one_id, theme.player_two_id, theme.player_three_id]:
-            addPopular(player_id,0.5)
+            addPopular(player_id, 0.5)
             if player_id in bag_players:
                 data = toPiece(user.id, player_id)
             else:
@@ -406,7 +407,7 @@ class RenewContract(Resource):
         contract = '一年%d万，%d年%d月%d日续约，%d年%d月%d日到期' % (price, today.year,
                                                       today.month, today.day, duedate.year, duedate.month, duedate.day)
         bag_player.contract = contract
-        addPopular(bag_player.player_id,5)  ##add popular
+        addPopular(bag_player.player_id, 5)  ##add popular
         mes = __commit__(rMessage({'contract': contract}))
         return mes.response
 
@@ -427,12 +428,14 @@ class InitPlayer(Resource):
         mes = __commit__(rMessage(res))
         return mes.response
 
-def addPopular(player_id,popular):
+
+def addPopular(player_id, popular):
     po = query(PlayerStat).get(player_id)
     if not po:
         add(PlayerStat(player_id, 0, popular))
     else:
         po.popular = min(po.popular + popular, 100000000)
+
 
 recruit_api.add_resource(GetRecruit, '/get_recruit_info')
 recruit_api.add_resource(OneRecruit, '/one_recruit')
@@ -446,8 +449,8 @@ recruit_api.add_resource(InitPlayer, '/init_player')
 
 class Recom(Resource):
     recom = None
-    onrecom = False
-    
+    turn_on = False
+
     def __init__(self):
         if not Recom.recom:
             print('start init recommendation system, waiting ...')
@@ -459,20 +462,17 @@ class Recom(Resource):
         kind = parser.parse_args()['type']
         if token != 923458897 or kind not in range(5):
             return rMessage("error").response
-        if kind ==0:
-            Recom.onrecom = True
+        if kind == 0:
+            Recom.turn_on = True
         if kind == 1:
-            Recom.recom.genSim()
-        if kind ==2:
-            Recom.recom.genLikes()
-        if kind ==3:
-            Recom.recom.genMode()
-        if kind ==4:
-            Recom.recom.calcRate()
-        if kind==5:
-            Recom.onrecom = False
+            Recom.recom.genSim()##every three days,clear table
+        if kind == 2:
+            Recom.recom.genLikes()##once,clear table
+        if kind == 3:
+            Recom.recom.genMode()##every day
+        if kind == 4:
+            Recom.turn_on = False
         return rMessage("ok").response
-
 
 
 recruit_api.add_resource(Recom, '/manage_recom')

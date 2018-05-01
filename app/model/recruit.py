@@ -18,22 +18,6 @@ class Recruit(db.Model):
     def __repr__(self):
         return "<Recruit %r>" % self.user_id
 
-class UserStat(db.Model):
-    __tablename__ = "recom_user"
-
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True,nullable=False)
-    rated_num = db.Column(db.Integer)
-
-
-    def __init__(self,user_id,rated_num):
-        self.user_id=user_id
-        self.rated_num=rated_num
-
-
-    def __repr__(self):
-        return "<UserStat %r>" % self.user_id
-
-
 class Sim(db.Model):
     __tablename__ = "recom_sim"
 

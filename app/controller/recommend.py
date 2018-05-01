@@ -1,5 +1,5 @@
 from app import db
-from app.model import User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, Sim, PlayerStat, UserStat, SeasonData, Like
+from app.model import PlayerBase, BagPlayer, BagTrailCard, BagPiece, Sim, PlayerStat, SeasonData, Like
 from random import choice, random
 import datetime
 
@@ -11,14 +11,14 @@ commit = db.session.commit
 rollback = db.session.rollback
 
 
-def __commit__(mes=None):
+def __commit__():
     try:
         commit()
-        return mes
+        return True
     except Exception as e:
         rollback()
         print(e)
-        return None
+        return False
 
 
 def __randomPick__(lists, prob):
@@ -35,26 +35,24 @@ class Recommend:
         self.__sims = None  ##dict(dict())
         self.__likes = None  ##dict(dict())
         self.__mode = dict()
+        self.__pcnt = 0
+        self.__buyNum = None
         self.__delInvalidPlayer__()
         self.__player_score = dict(query(PlayerBase.id, PlayerBase.score).all());
         items = query(Sim.player_one, Sim.player_two, Sim.sim).all()
-        if not items:  ##system first init reommendation
+        if not items:
             self.genSim()
             print('system first init sim')
         else:
-            self.__getSim__(items)  ## first time all zero
+            self.__getSim__(items)
             print('get sims')
 
             items = query(PlayerStat.player_id, PlayerStat.mode).all()
-            self.__getMode__(items)  ## first time all zero
+            self.__getMode__(items)
             print('get modes')
 
-            items = query(UserStat.user_id, UserStat.rated_num).all()
-            self.__newPlayer = dict(items)  ##first time none
-            print('get user state')
-
         items = query(Like.player_one, Like.player_two, Like.like).all()
-        if not items:  ##system first init reommendation
+        if not items:
             self.genLikes()
             print('system first init likes')
         else:
@@ -68,12 +66,12 @@ class Recommend:
         filter1 = {i[0] for i in filter0}
         filter2 = query(BagTrailCard.player_id).filter(BagTrailCard.user_id == user_id).all()
         filter2 = {i[0] for i in filter2}
-        if self.__isNewUser__(user_id):  ##判断新老用户
+        if len([p for (p, s) in filter0 if s - self.__player_score[p] != 0]) > 10:  ##判断新老用户
+            print('old user')
+            players = self.__itemBased__(filter0, filter2)
+        else:
             print('new user')
             players = self.__scoreBased__(filter1, filter2)
-        else:
-            print('old user')
-            players = self.__itemBased__(filter0, filter1, filter2)
         if not players:
             print('cannot recom trial')
             return None
@@ -83,7 +81,7 @@ class Recommend:
         time_class = [1, 3, 5]
         prob = [0.85, 0.1, 0.05]
         time = __randomPick__(time_class, prob)
-        print('recom_piece', player_id)
+        print('recom_trial', player_id)
         return {"id": player_id, "time": time}
 
     def __scoreBased__(self, bp, tp):  ##众数法 O(P·ln(P))
@@ -94,11 +92,11 @@ class Recommend:
         if len(mp) < 1:
             return None
         pm = [(p, self.__mode[p]) for p in self.__mode if p in mp]
-        pm = sorted(pm, key=lambda x: x[1], reverse=True)
+        pm = sorted(pm, key=lambda x: x[1], reverse=True) 
         return [p for (p, r) in pm]
 
-    def __itemBased__(self, bps, bp, tp):  ##项目协同 O(P^2)
-        pl = self.__getLevelPlayer(bps) - bp;
+    def __itemBased__(self, bps, tp):  ##项目协同 O(P^2)
+        pl = self.__getLevelPlayer(bps) - {p for p, s in bps};
         if pl - tp:
             pl = pl - tp
         if len(pl) < 1:
@@ -114,39 +112,38 @@ class Recommend:
                 rates[p] = 0
             else:
                 rates[p] /= simsum
-        pl = sorted(rates.items(), key=lambda x: x[1], reverse=True)
+        pl = sorted(rates.items(), key=lambda x: x[1], reverse=True) 
         return [p for (p, r) in pl]
 
     def __getLevelPlayer(self, bps):
         prob = [1] * 4
         for (p, s) in bps:
-            if s <= 70:
+            if s < 70:
                 prob[0] += 1
-            if s > 70 and s <= 80:
+            if 70 <= s < 80:
                 prob[1] += 1
-            if s > 80 and s <= 90:
+            if 80 <= s < 90:
                 prob[2] += 1
-            if s > 90:
+            if s >= 90:
                 prob[3] += 1
         for i in range(len(prob)):
             prob[i] /= len(bps) + 4
         level = __randomPick__(range(4), prob)
         if level == 0:
-            return {k for k, v in self.__player_score.items() if v <= 70}
+            return {k for k, v in self.__player_score.items() if v < 70}
         if level == 1:
-            return {k for k, v in self.__player_score.items() if 70 < v <= 80}
+            return {k for k, v in self.__player_score.items() if 70 <= v < 80}
         if level == 2:
-            return {k for k, v in self.__player_score.items() if 80 < v <= 90}
+            return {k for k, v in self.__player_score.items() if 80 <= v < 90}
         if level == 3:
-            return {k for k, v in self.__player_score.items() if v > 90}
+            return {k for k, v in self.__player_score.items() if v >= 90}
 
     def genSim(self):  ##O(P^2·U)  ok
-        print('start generate sim')
         rates = self.calcRate()
         sims = dict()
         for p1 in rates:
             for p2 in rates:
-                if ((p1, p2) in sims) or ((p2, p1) in sims):
+                if p1==p2 or ((p1, p2) in sims) or ((p2, p1) in sims):
                     continue
                 val = self.__cosDict__(rates[p1], rates[p2])
                 if val:
@@ -155,10 +152,9 @@ class Recommend:
         query(Sim).delete()
         items = [(item[0], item[1], sims[item]) for item in sims]
         add_all([Sim(item[0], item[1], item[2]) for item in items])
-        __commit__()
-        self.__getSim__(items)
-        self.genMode(rates)
-        print('end generate sim')
+        if __commit__():
+            self.__getSim__(items)
+            self.genMode(rates)
 
     def genMode(self, rates=None):  ##ok
         if rates is None:
@@ -175,13 +171,11 @@ class Recommend:
             mode = data.index(max(data))
             modes.append((player, mode))
             query(PlayerStat).get(player).mode = mode
-        __commit__()
-        items = query(PlayerStat.player_id, PlayerStat.mode).all()
-        self.__getMode__(items)
+        if __commit__():
+            items = query(PlayerStat.player_id, PlayerStat.mode).all()
+            self.__getMode__(items)
 
     def calcRate(self):  ##O(U·P)  ##ok
-        users = query(User.id).all()
-        userRatedNum = {user[0]: 0 for user in users}
         bag_players = query(BagPlayer.user_id, BagPlayer.player_id, BagPlayer.score).all()
         scores = self.__player_score
         rates = dict()
@@ -190,14 +184,12 @@ class Recommend:
             rate = item[2] - scores[item[1]]
             if rate == 0:
                 continue
-            userRatedNum[item[0]] += 1;
             rang[0] = min(rang[0], rate)
             rang[1] = max(rang[1], rate)
             if item[1] not in rates:
                 rates[item[1]] = {item[0]: rate}
             else:
                 rates[item[1]][item[0]] = rate
-        self.__updateUserStat__(userRatedNum)
         for player in rates:
             for user in rates[player]:
                 if rang[1] <= rang[0]:
@@ -205,14 +197,6 @@ class Recommend:
                 else:
                     rates[player][user] = ((rates[player][user] - rang[0]) / (rang[1] - rang[0])) * 9 + 1
         return rates
-
-    def __updateUserStat__(self, userRatedNum):  ##ok
-        query(UserStat).delete()
-        data = list()
-        for user_id in userRatedNum:
-            data.append(UserStat(user_id, userRatedNum[user_id]))
-        add_all(data)
-        __commit__()
 
     def __getSim__(self, items):
         players = self.__player_score.keys()
@@ -225,7 +209,6 @@ class Recommend:
         for (p, m) in items:
             self.__mode[p] = m
         for pd in set(self.__player_score.keys()) - {i[0] for i in items}:  ##init every player_stat
-            add(PlayerStat(pd, 0, 0))
             self.__mode[pd] = 0  ##every player has mode
 
     def __delInvalidPlayer__(self):
@@ -245,22 +228,16 @@ class Recommend:
             return None
         return res1 / ((res2 * res3) ** 0.5)
 
-    def __isNewUser__(self, user_id):  ##ok
-        if user_id in self.__newPlayer:
-            if self.__newPlayer[user_id] <= 10:
-                return True
-        return False
-
     ####user would like
-    def sortRecommend(self, user_id,players):
-        if self.__isNewUser__(user_id):  ##判断新老用户
-            return self.__popularBased__(players)
+    def sortRecommend(self, user_id, players):
+        bp = query(BagPlayer.player_id).filter(BagPlayer.user_id == user_id).all()
+        if len(bp) > 20:  ##判断新老用户
+            return self.__contentBased__(user_id, players, bp)
         else:
-            return self.__contentBased__(user_id,players)
+            return self.__popularBased__(players)
 
-    def __contentBased__(self, user_id,pl):  ##O(P^2)
-        bag_players = query(BagPlayer.player_id).filter(BagPlayer.user_id == user_id).all()
-        bag_players = {i[0] for i in bag_players}
+    def __contentBased__(self, user_id, pl, bp):  ##O(P^2)
+        bag_players = {i[0] for i in bp}
         trial_players = query(BagTrailCard.player_id).filter(BagTrailCard.user_id == user_id).all()
         trial_players = {i[0] for i in trial_players}
         piece_players = query(BagPiece.player_id).filter(BagPiece.user_id == user_id).all()
@@ -273,7 +250,7 @@ class Recommend:
                 bps = self.__player_score[bp]
                 like = self.__likes[player][bp]
                 if bps > ps and bps < ps + 5 and like > 0.6:
-                    like = like * 2
+                    like = like * 5
                 score += like
             if player in trial_players:
                 score = score * 1.2
@@ -282,21 +259,20 @@ class Recommend:
             players.append((player, score))
         for player in bag_players:
             players.append((player, 0))
-        players = sorted(players, key=lambda x: x[1], reverse=True)
+        players = sorted(players, key=lambda x: x[1], reverse=True) 
         dp = {p.id: p for p in pl}
         return [dp[p] for (p, s) in players]
 
-    def __popularBased__(self,pl):
+    def __popularBased__(self, pl):
         pp = dict(query(PlayerStat.player_id, PlayerStat.popular).all())
         ppo = list()
         for p in {p for p in self.__player_score}:
             if p not in pp:
                 pp[p] = 0
             ppo.append((p, pp[p]))
-        ppo = sorted(ppo, key=lambda x: x[1], reverse=True)
+        ppo = sorted(ppo, key=lambda x: x[1], reverse=True) 
         dp = {p.id: p for p in pl}
         return [dp[p] for (p, po) in ppo]
-
 
     def genLikes(self):  ##ok
         s = SeasonData
@@ -314,8 +290,8 @@ class Recommend:
         query(Like).delete()
         items = [(item[0], item[1], likes[item]) for item in likes]
         add_all([Like(item[0], item[1], item[2]) for item in items])
-        __commit__()
-        self.__getLike__(items)
+        if __commit__():
+            self.__getLike__(items)
 
     def __getLike__(self, items):
         players = self.__player_score.keys()
@@ -338,13 +314,11 @@ class Recommend:
 
     ####optimize
     def genPiece(self):  ####ok
-        player_id = BagPlayer.player_id
-        pc = query(player_id, db.func.count(player_id)).group_by(player_id).all()
-        old_players = {p for (p, c) in pc}
+        old_players = self.getOldPlayers()
         all_players = {p for p in self.__player_score}
         players = list(all_players - old_players)
         if not players:
-            players = sorted(pc, key=lambda x: x[1])
+            players = sorted(self.__buyNum, key=lambda x: x[1]) 
             players = [p for (p, c) in players]
             if len(players) > 10:
                 players = players[:10]
@@ -353,3 +327,10 @@ class Recommend:
         prob = [0.45, 0.4, 0.1, 0.05]
         num = __randomPick__(num_class, prob)
         return {"id": player_id, "num": num}
+
+    def getOldPlayers(self):
+        if self.__pcnt == 0 or self.__buyNum is None:
+            player_id = BagPlayer.player_id
+            self.__buyNum = query(player_id, db.func.count(player_id)).group_by(player_id).all()
+        self.__pcnt = (self.__pcnt + 1) % 1000
+        return {p for (p, c) in self.__buyNum}
