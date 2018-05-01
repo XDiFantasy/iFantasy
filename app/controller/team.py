@@ -13,7 +13,13 @@ team_api = Api(team_bp)
 
 # 将数据转换成百分比
 def switch_percent(data):
-    return str(float(data) * 100 ) + '%'
+    str_num =  str(float(data) * 100).split('.')
+    if str_num[1][0] == '0':
+        res = str_num[0] + '%'
+    else:
+        res = str_num[0] + '.' + str_num[1][0] + '%'
+    return res
+
 
 # 获取球员赛季数据
 def get_season_data(data):
