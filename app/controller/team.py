@@ -11,13 +11,17 @@ team_bp = Blueprint("team_bp", __name__)
 team_api = Api(team_bp)
 
 
+# 将数据转换成百分比
+def switch_percent(data):
+    return str(float(data) * 100 ) + '%'
+
 # 获取球员赛季数据
 def get_season_data(data):
     result = []
 
     for season in data:
         season_data = {}
-        season_data['season'] = season.season
+        season_data['season'] = season.season[2:]
         season_data['team_name'] = season.team_name
         season_data['gp'] = season.gp  # 出场
         season_data['min'] = season.min  # 时间
@@ -28,11 +32,11 @@ def get_season_data(data):
         season_data['stl'] = season.stl  # 抢断
         season_data['blk'] = season.blk  # 盖帽
         season_data['tov'] = season.tov  # 失误
-        season_data['fg_pct'] = season.fg_pct  # 投篮%
-        season_data['fg3_pct'] = season.fg3_pct  # 三分%
-        season_data['ft_pct'] = season.ft_pct  # 罚球%
-        season_data['efg_pct'] = season.efg_pct
-        season_data['ts_pct'] = season.ts_pct
+        season_data['fg_pct'] = switch_percent(season.fg_pct)  # 投篮%
+        season_data['fg3_pct'] = switch_percent(season.fg3_pct)  # 三分%
+        season_data['ft_pct'] = switch_percent(season.ft_pct)  # 罚球%
+        season_data['efg_pct'] = switch_percent(season.efg_pct)
+        season_data['ts_pct'] = switch_percent(season.ts_pct)
         season_data['ortg'] = season.ortg
         season_data['drtg'] = season.drtg
 
