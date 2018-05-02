@@ -1,7 +1,7 @@
 from app import db
 from app.model import PlayerBase, BagPlayer, BagTrailCard, BagPiece, Sim, PlayerStat, SeasonData, Like
 from random import choice, random
-import datetime
+import datetime,threading,time
 
 query = db.session.query
 add = db.session.add
@@ -35,8 +35,6 @@ class Recommend:
         self.__sims = None  ##dict(dict())
         self.__likes = None  ##dict(dict())
         self.__mode = dict()
-        self.__pcnt = 0
-        self.__buyNum = None
         self.__delInvalidPlayer__()
         self.__player_score = dict(query(PlayerBase.id, PlayerBase.score).all());
         items = query(Sim.player_one, Sim.player_two, Sim.sim).all()
@@ -59,6 +57,15 @@ class Recommend:
             self.__getLike__(items)
             print('get likes')
 
+        player_id = BagPlayer.player_id
+        self.__buyNum = query(player_id, db.func.count(player_id)).group_by(player_id).all()
+        self.__threadAlive = True
+        self.__thread = threading.Thread(target=self.watch)
+        self.__thread.start()
+
+    def __del__(self):
+        self.__threadAlive = False
+        self.__thread.join()
     ####team will win
 
     def genTrial(self, user_id):
@@ -229,14 +236,14 @@ class Recommend:
         return res1 / ((res2 * res3) ** 0.5)
 
     ####user would like
-    def sortRecommend(self, user_id, players):
+    def sortRecommend(self, user_id):
         bp = query(BagPlayer.player_id).filter(BagPlayer.user_id == user_id).all()
         if len(bp) > 20:  ##判断新老用户
-            return self.__contentBased__(user_id, players, bp)
+            return self.__contentBased__(user_id, bp)
         else:
-            return self.__popularBased__(players)
+            return self.__popularBased__()
 
-    def __contentBased__(self, user_id, pl, bp):  ##O(P^2)
+    def __contentBased__(self, user_id,bp):  ##O(P^2)
         bag_players = {i[0] for i in bp}
         trial_players = query(BagTrailCard.player_id).filter(BagTrailCard.user_id == user_id).all()
         trial_players = {i[0] for i in trial_players}
@@ -259,20 +266,18 @@ class Recommend:
             players.append((player, score))
         for player in bag_players:
             players.append((player, 0))
-        players = sorted(players, key=lambda x: x[1], reverse=True) 
-        dp = {p.id: p for p in pl}
-        return [dp[p] for (p, s) in players]
+        players = sorted(players, key=lambda x: x[1], reverse=True)
+        return [p for (p, s) in players]
 
-    def __popularBased__(self, pl):
+    def __popularBased__(self):
         pp = dict(query(PlayerStat.player_id, PlayerStat.popular).all())
         ppo = list()
         for p in {p for p in self.__player_score}:
             if p not in pp:
                 pp[p] = 0
             ppo.append((p, pp[p]))
-        ppo = sorted(ppo, key=lambda x: x[1], reverse=True) 
-        dp = {p.id: p for p in pl}
-        return [dp[p] for (p, po) in ppo]
+        ppo = sorted(ppo, key=lambda x: x[1], reverse=True)
+        return [p for (p, po) in ppo]
 
     def genLikes(self):  ##ok
         s = SeasonData
@@ -328,9 +333,26 @@ class Recommend:
         num = __randomPick__(num_class, prob)
         return {"id": player_id, "num": num}
 
-    def getOldPlayers(self):
-        if self.__pcnt == 0 or self.__buyNum is None:
-            player_id = BagPlayer.player_id
-            self.__buyNum = query(player_id, db.func.count(player_id)).group_by(player_id).all()
-        self.__pcnt = (self.__pcnt + 1) % 1000
-        return {p for (p, c) in self.__buyNum}
+
+    def watch(self):
+        print('watch run')
+        sTime = datetime.datetime.now()
+        mTime = datetime.datetime.now()
+        pTime = datetime.datetime.now()
+        while self.__threadAlive:
+            cTime = datetime.datetime.now()
+            if cTime-sTime >= datetime.timedelta(days=3):
+                self.genSim()
+                sTime = cTime
+                print('auto gen sim')
+            else:
+                if cTime-mTime >= datetime.timedelta(days=1):
+                    self.genMode()
+                    mTime = cTime
+                    print('auto gen mode')
+            if cTime-pTime >= datetime.timedelta(seconds=28800):
+                player_id = BagPlayer.player_id
+                self.__buyNum = query(player_id, db.func.count(player_id)).group_by(player_id).all()
+                pTime = cTime
+                print('auto gen piece')
+            time.sleep(28800)

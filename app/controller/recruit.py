@@ -179,7 +179,7 @@ def getProp(user_id):
     prob = [0.2, 0.6, 0.1, 0.1]
     ptype = __randomPick__(prop_type, prob)
     if ptype == 'trail':
-        if Recom.turn_on:
+        if Recom.recom:
             res = Recom.recom.genTrial(user_id)
             print('recom trial')
         else:
@@ -195,7 +195,7 @@ def getProp(user_id):
         pic = pic_url.format(player.team_id, player.id)
         return {'name': player.name, 'time': res['time'], "pic": pic, "type": "trail"}
     if ptype == 'piece':
-        if Recom.turn_on:
+        if Recom.recom:
             res = Recom.recom.genPiece()
             print('recom piece')
         else:
@@ -311,41 +311,35 @@ class RecruitPlayer(Resource):
         return mes.response
 
 
-def dataFilter(items, strs):
-    res = list()
-    for item in items:
-        if strs and item.pos1 != strs and item.pos2 != strs:
-            continue
-        pic = pic_url.format(item.team_id, item.id)
-        res.append({"id": item.id, "name": item.name, "pos1": item.pos1, "pos2": item.pos2, "price": item.price,
-                    "score": item.score, "pic": pic})
-    return res
-
-
 class ShowPlayer(Resource):
     def get(self):
-        index = parser.parse_args()['type']
+        index = parser.parse_args()['type']##sort
         user_id = parser.parse_args()['user_id']
-        pos = parser.parse_args()['pos']
+        pos = parser.parse_args()['pos']##filter
         if not index:
             index = 0
         if not pos:
             pos = 0
-        if index not in [0, 1, 2]:
+        if index not in range(-3,4) or pos not in range(6):
             return rMessage(error=State.ArgError).response
-        order = [PlayerBase.id, PlayerBase.score, PlayerBase.price]
-        data = query(PlayerBase).order_by(db.desc(order[index])).all()
-        if Recom.turn_on and index == 0:
-            data = Recom.recom.sortRecommend(user_id, data)
+        order = [PlayerBase.id, PlayerBase.id, PlayerBase.score, PlayerBase.price]
+        poss = ['','c','f','f','g','g']
+        PB = PlayerBase
+        res = query(PB.id,PB.name,PB.pos1,PB.pos2,PB.price,PB.score,PB.team_id)
+        if pos != 0:
+            res = res.filter((PB.pos1 == poss[pos]) | (PB.pos2 == poss[pos]))
+        if abs(index)==1 and Recom.recom:
+            pl = Recom.recom.sortRecommend(user_id)
             print('recom list')
-        if pos == 0:
-            return rMessage(dataFilter(data, None)).response
-        if pos == 1:
-            return rMessage(dataFilter(data, 'c')).response
-        if pos == 2 or pos == 3:
-            return rMessage(dataFilter(data, 'f')).response
-        if pos == 4 or pos == 5:
-            return rMessage(dataFilter(data, 'g')).response
+            pinfo = {p[0]:p for p in res.all()}##id-tuple
+            res = [pinfo[p] for p in pl if p in pinfo] ##tuple list
+        else:
+            res = res.order_by(db.desc(order[abs(index)])).all()
+        if index <= 0:
+            return rMessage([{"id": p[0], "name": p[1], "pos1": p[2], "pos2": p[3], "price": p[4],"score": p[5],
+              "pic": pic_url.format(p[6], p[0])} for p in res]).response
+        else:
+            return rMessage([p[0] for p in res]).response
 
 
 class BuyTheme(Resource):
@@ -449,30 +443,30 @@ recruit_api.add_resource(InitPlayer, '/init_player')
 
 class Recom(Resource):
     recom = None
-    turn_on = False
-
-    def __init__(self):
-        if not Recom.recom:
-            print('start init recommendation system, waiting ...')
-            Recom.recom = Recommend()
-            print('init successfully')
 
     def get(self):
         token = parser.parse_args()['user_id']
         kind = parser.parse_args()['type']
         if token != 923458897 or kind not in range(5):
             return rMessage("error").response
-        if kind == 0:
-            Recom.turn_on = True
+        if kind == 4:
+            if Recom.recom:
+                Recom.recom.__del__()
+                Recom.recom = None
+                print('close recommendation system')
+        else:
+            if not Recom.recom:
+                print('start init recommendation system, waiting ...')
+                Recom.recom = Recommend()
+                print('init successfully')
         if kind == 1:
             Recom.recom.genSim()##every three days,clear table
         if kind == 2:
             Recom.recom.genLikes()##once,clear table
         if kind == 3:
             Recom.recom.genMode()##every day
-        if kind == 4:
-            Recom.turn_on = False
-        return rMessage("ok").response
+
+        return rMessage("finish").response
 
 
 recruit_api.add_resource(Recom, '/manage_recom')
