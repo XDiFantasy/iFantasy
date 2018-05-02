@@ -1,9 +1,10 @@
 from flask import Blueprint
 from flask_restful import Api, Resource, reqparse
 from app import db
-from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, BagProp, Theme
+from app.model import Recruit, User, PlayerBase, BagPlayer, BagTrailCard, BagPiece, BagProp, Theme, PlayerStat
 from .message import Message
-from random import choice, random
+from .recommend import Recommend
+from random import choice, random, sample
 import datetime
 
 recruit_bp = Blueprint('recruit_bp', __name__)
@@ -92,7 +93,7 @@ def __randomPick__(lists, prob):
     return item
 
 
-def __commit__(mes):
+def __commit__(mes=None):
     try:
         commit()
         return mes
@@ -102,18 +103,22 @@ def __commit__(mes):
         return rMessage(error=State.FailCommit)
 
 
-def selectPlayer(type):
+def selectPlayer(type, pos=None):
     score = PlayerBase.score
     id = PlayerBase.id
+    pos1 = PlayerBase.pos1
+    pos2 = PlayerBase.pos2
     if type == 0:
-        res = query(id).filter(score > 90).all()
+        res = query(id).filter(score >= 90)
     if type == 1:
-        res = query(id).filter(score <= 90, score > 80).all()
+        res = query(id).filter(score < 90, score >= 80)
     if type == 2:
-        res = query(id).filter(score <= 80, score > 70).all()
+        res = query(id).filter(score < 80, score >= 70)
     if type == 3:
-        res = query(id).filter(score <= 70).all()
-    return __toSet__(res)
+        res = query(id).filter(score < 70)
+    if pos:
+        res = res.filter((pos1 == pos) | (pos2 == pos))
+    return __toSet__(res.all())
 
 
 def addPlayer(user_id, player):
@@ -126,7 +131,7 @@ def addPlayer(user_id, player):
     return {"name": player.name, "pic": pic, "type": "player"}
 
 
-def getPlayer(user_id, filter, level):
+def getPlayer(user_id, level):
     if level == 1:
         player_class = [0, 1, 2]
         prob = [0.01, 0.09, 0.9]
@@ -135,22 +140,23 @@ def getPlayer(user_id, filter, level):
         prob = [0.02, 0.98]
     players = selectPlayer(__randomPick__(player_class, prob))
     player_id = choice(list(players))
-    if player_id not in filter:
+    ownplayer = getValidPlayer(user_id)
+    if player_id not in ownplayer:
         player = query(PlayerBase).get(player_id)
         return addPlayer(user_id, player)
     else:
         return player_id
 
 
-def genTrail(filter):
+def genTrial(user_id):
+    ownplayer = getValidPlayer(user_id)
     player_class = [0, 1, 2, 3]
     prob = [0.3, 0.4, 0.2, 0.1]
     players = selectPlayer(__randomPick__(player_class, prob))
-    new_players = players - filter
+    new_players = players - ownplayer
     if new_players:
-        player_id = choice(list(new_players))
-    else:
-        player_id = choice(list(players))
+        players = new_players
+    player_id = choice(list(players))
     time_class = [1, 3, 5]
     prob = [0.85, 0.1, 0.05]
     time = __randomPick__(time_class, prob)
@@ -168,12 +174,18 @@ def genPiece():
     return {"id": player_id, "num": num}
 
 
-def getProp(user_id, filter):
+def getProp(user_id):
     prop_type = ['trail', 'piece', 'fund', 'exp']
     prob = [0.2, 0.6, 0.1, 0.1]
     ptype = __randomPick__(prop_type, prob)
     if ptype == 'trail':
-        res = genTrail(set(filter))
+        if Recom.recom:
+            res = Recom.recom.genTrial(user_id)
+            print('recom trial')
+        else:
+            res = genTrial(user_id)
+        if not res:
+            res = genTrial(user_id)
         player = query(PlayerBase).get(res['id'])
         trail_card = query(BagTrailCard).get((user_id, player.id, res['time']))
         if trail_card:
@@ -183,7 +195,11 @@ def getProp(user_id, filter):
         pic = pic_url.format(player.team_id, player.id)
         return {'name': player.name, 'time': res['time'], "pic": pic, "type": "trail"}
     if ptype == 'piece':
-        res = genPiece()
+        if Recom.recom:
+            res = Recom.recom.genPiece()
+            print('recom piece')
+        else:
+            res = genPiece()
         player = query(PlayerBase).get(res['id'])
         piece = query(BagPiece).get((user_id, player.id))
         if piece:
@@ -219,6 +235,16 @@ def toPiece(user_id, player_id):
     return {'name': player.name, 'num': num, "pic": pic, "type": "piece"}
 
 
+def getValidPlayer(user_id):
+    players = set()
+    now = datetime.datetime.now()
+    bagplayer = query(BagPlayer).filter(BagPlayer.user_id == user_id).all()
+    for item in bagplayer:
+        if item.duedate > now:
+            players.add(item.player_id)
+    return players
+
+
 class OneRecruit(Resource):
     def post(self):
         args = parser.parse_args()
@@ -226,7 +252,6 @@ class OneRecruit(Resource):
         if r_info is None:
             return rMessage(error=State.ArgError).response
         u_info = r_info.user
-        b_info = [player.player_id for player in u_info.bagplayer]
         delta = (datetime.datetime.now() - r_info.time)
         delta = datetime.timedelta(days=delta.days, seconds=delta.seconds)
         if delta.days > 0 or delta.seconds > 18000:
@@ -237,11 +262,11 @@ class OneRecruit(Resource):
             else:
                 return rMessage(error=State.NoMoney).response
         if r_info.num == 2:
-            res = getPlayer(u_info.id, b_info, 1)
+            res = getPlayer(u_info.id, 1)
             if isinstance(res, int):
                 res = toPiece(u_info.id, res)
         else:
-            res = getProp(u_info.id, b_info)
+            res = getProp(u_info.id)
         r_info.num = (r_info.num + 1) % 3
         mes = __commit__(rMessage(res))  ####
         return mes.response
@@ -253,17 +278,16 @@ class FiveRecruie(Resource):
         u_info = query(User).get(args['user_id'])
         if u_info is None:
             return rMessage(error=State.ArgError).response
-        b_info = [player.player_id for player in u_info.bagplayer]
         if u_info.money >= 400:
             u_info.money -= 400
         else:
             return rMessage(error=State.NoMoney).response  # no money
-        res = getPlayer(u_info.id, b_info, 5)
+        res = getPlayer(u_info.id, 5)
         if isinstance(res, int):
             res = toPiece(u_info.id, res)
         items = [res]
         for i in range(4):
-            items.append(getProp(u_info.id, b_info))
+            items.append(getProp(u_info.id))
         mes = __commit__(rMessage(items))
         return mes.response
 
@@ -277,46 +301,45 @@ class RecruitPlayer(Resource):
             return rMessage(error=State.ArgError).response
         if user.money < player.price:
             return rMessage(error=State.NoMoney).response
-        player_ids = [player.player_id for player in user.bagplayer]
+        player_ids = getValidPlayer(user.id)
         if player.id in player_ids:
             return rMessage(error=State.OwnPlayer).response
         user.money -= player.price
         res = addPlayer(user.id, player)
+        addPopular(player.id, 1)
         mes = __commit__(rMessage(res))  ####
         return mes.response
 
 
-def dataFilter(items, strs):
-    if strs:
-        items = items.filter(db.or_(PlayerBase.pos1 == strs, PlayerBase.pos2 == strs))
-    res = list()
-    for item in items.all():
-        pic = pic_url.format(item.team_id, item.id)
-        res.append({"id": item.id, "name": item.name, "pos1": item.pos1, "pos2": item.pos2, "price": item.price,
-                    "score": item.score, "pic": pic})
-    return res
-
-
 class ShowPlayer(Resource):
     def get(self):
-        index = parser.parse_args()['type']
-        pos = parser.parse_args()['pos']
+        index = parser.parse_args()['type']##sort
+        user_id = parser.parse_args()['user_id']
+        pos = parser.parse_args()['pos']##filter
         if not index:
             index = 0
         if not pos:
             pos = 0
-        if index not in [0, 1, 2]:
+        if index not in range(-3,4) or pos not in range(6):
             return rMessage(error=State.ArgError).response
-        order = [PlayerBase.id, PlayerBase.score, PlayerBase.price]
-        data = query(PlayerBase).order_by(db.desc(order[index]))
-        if pos == 0:
-            return rMessage(dataFilter(data, None)).response
-        if pos == 1:
-            return rMessage(dataFilter(data, 'c')).response
-        if pos == 2 or pos == 3:
-            return rMessage(dataFilter(data, 'f')).response
-        if pos == 4 or pos == 5:
-            return rMessage(dataFilter(data, 'g')).response
+        order = [PlayerBase.id, PlayerBase.id, PlayerBase.score, PlayerBase.price]
+        poss = ['','c','f','f','g','g']
+        PB = PlayerBase
+        res = query(PB.id,PB.name,PB.pos1,PB.pos2,PB.price,PB.score,PB.team_id)
+        if pos != 0:
+            res = res.filter((PB.pos1 == poss[pos]) | (PB.pos2 == poss[pos]))
+        if abs(index)==1 and Recom.recom:
+            pl = Recom.recom.sortRecommend(user_id)
+            print('recom list')
+            pinfo = {p[0]:p for p in res.all()}##id-tuple
+            res = [pinfo[p] for p in pl if p in pinfo] ##tuple list
+        else:
+            res = res.order_by(db.desc(order[abs(index)])).all()
+        if index <= 0:
+            return rMessage([{"id": p[0], "name": p[1], "pos1": p[2], "pos2": p[3], "price": p[4],"score": p[5],
+              "pic": pic_url.format(p[6], p[0])} for p in res]).response
+        else:
+            return rMessage([p[0] for p in res]).response
 
 
 class BuyTheme(Resource):
@@ -329,9 +352,10 @@ class BuyTheme(Resource):
         if user.money < theme.price:
             return rMessage(error=State.NoMoney).response
         user.money -= theme.price
-        bag_players = [player.player_id for player in user.bagplayer]
+        bag_players = getValidPlayer(user.id)
         res = list()
         for player_id in [theme.player_one_id, theme.player_two_id, theme.player_three_id]:
+            addPopular(player_id, 0.5)
             if player_id in bag_players:
                 data = toPiece(user.id, player_id)
             else:
@@ -377,8 +401,34 @@ class RenewContract(Resource):
         contract = '一年%d万，%d年%d月%d日续约，%d年%d月%d日到期' % (price, today.year,
                                                       today.month, today.day, duedate.year, duedate.month, duedate.day)
         bag_player.contract = contract
-        mes = __commit__(rMessage({'contract':contract}))
+        addPopular(bag_player.player_id, 5)  ##add popular
+        mes = __commit__(rMessage({'contract': contract}))
         return mes.response
+
+
+class InitPlayer(Resource):
+    def post(self):
+        user_id = parser.parse_args()['user_id']
+        c_player = selectPlayer(3, 'c')
+        players = {choice(list(c_player))}
+        f_player = selectPlayer(3, 'f') - players
+        players.update(sample(list(f_player), 2))
+        g_player = selectPlayer(3, 'g') - players
+        players.update(sample(list(g_player), 2))
+        res = list()
+        for player_id in players:
+            player = query(PlayerBase).get(player_id)
+            res.append(addPlayer(user_id, player))
+        mes = __commit__(rMessage(res))
+        return mes.response
+
+
+def addPopular(player_id, popular):
+    po = query(PlayerStat).get(player_id)
+    if not po:
+        add(PlayerStat(player_id, 0, popular))
+    else:
+        po.popular = min(po.popular + popular, 100000000)
 
 
 recruit_api.add_resource(GetRecruit, '/get_recruit_info')
@@ -387,4 +437,36 @@ recruit_api.add_resource(FiveRecruie, '/five_recruit')
 recruit_api.add_resource(RecruitPlayer, '/recruit')
 recruit_api.add_resource(ShowPlayer, '/show_all_payer')
 recruit_api.add_resource(BuyTheme, '/buy_theme')
-recruit_api.add_resource(RenewContract,'/renew_contract')
+recruit_api.add_resource(RenewContract, '/renew_contract')
+recruit_api.add_resource(InitPlayer, '/init_player')
+
+
+class Recom(Resource):
+    recom = None
+
+    def get(self):
+        token = parser.parse_args()['user_id']
+        kind = parser.parse_args()['type']
+        if token != 923458897 or kind not in range(5):
+            return rMessage("error").response
+        if kind == 4:
+            if Recom.recom:
+                Recom.recom.__del__()
+                Recom.recom = None
+                print('close recommendation system')
+        else:
+            if not Recom.recom:
+                print('start init recommendation system, waiting ...')
+                Recom.recom = Recommend()
+                print('init successfully')
+        if kind == 1:
+            Recom.recom.genSim()##every three days,clear table
+        if kind == 2:
+            Recom.recom.genLikes()##once,clear table
+        if kind == 3:
+            Recom.recom.genMode()##every day
+
+        return rMessage("finish").response
+
+
+recruit_api.add_resource(Recom, '/manage_recom')
