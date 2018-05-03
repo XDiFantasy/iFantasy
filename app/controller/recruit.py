@@ -16,7 +16,7 @@ commit = db.session.commit
 rollback = db.session.rollback
 parser.add_argument('user_id', type=int)
 parser.add_argument('player_id', type=int)
-parser.add_argument('type', type=int)  # 1-score,2-price
+parser.add_argument('order', type=int)  # 1-score,2-price
 parser.add_argument('pos', type=int)  # 0-all,1-c,2-pf,3-sf,4-pg,5-sg
 parser.add_argument('theme_id', type=int)
 parser.add_argument('bag_player_id', type=int)
@@ -308,7 +308,7 @@ class RecruitPlayer(Resource):
 
 class ShowPlayer(Resource):
     def get(self):
-        index = parser.parse_args()['type']##sort
+        index = parser.parse_args()['order']##sort
         user_id = parser.parse_args()['user_id']
         pos = parser.parse_args()['pos']##filter
         if not index:
@@ -441,7 +441,7 @@ class Recom(Resource):
 
     def get(self):
         token = parser.parse_args()['user_id']
-        kind = parser.parse_args()['type']
+        kind = parser.parse_args()['order']
         if token != 923458897 or kind not in range(5):
             return rMessage("error").response
         if kind == 4:
