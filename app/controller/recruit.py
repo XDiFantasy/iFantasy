@@ -20,7 +20,6 @@ parser.add_argument('type', type=int)  # 1-score,2-price
 parser.add_argument('pos', type=int)  # 0-all,1-c,2-pf,3-sf,4-pg,5-sg
 parser.add_argument('theme_id', type=int)
 parser.add_argument('bag_player_id', type=int)
-pic_url = "https://ak-static.cms.nba.com/wp-content/uploads/headshots/nba/{0}/2017/260x190/{1}.png"
 
 
 class State:
@@ -127,8 +126,7 @@ def addPlayer(user_id, player):
     contract = '一年%d万，%d年%d月%d日签约，%d年%d月%d日到期' % (player.price, today.year,
                                                   today.month, today.day, duedate.year, duedate.month, duedate.day)
     add(BagPlayer(user_id, player.id, player.score, player.price, duedate, contract))
-    pic = pic_url.format(player.team_id, player.id)
-    return {"name": player.name, "pic": pic, "type": "player"}
+    return {"name": player.name, "id": player.id, "type": "player"}
 
 
 def getPlayer(user_id, level):
@@ -192,8 +190,7 @@ def getProp(user_id):
             trail_card.num += 1
         else:
             add(BagTrailCard(user_id, player.id, 1, res['time']))
-        pic = pic_url.format(player.team_id, player.id)
-        return {'name': player.name, 'time': res['time'], "pic": pic, "type": "trail"}
+        return {'name': player.name, 'time': res['time'], "id": player.id, "type": "trail"}
     if ptype == 'piece':
         if Recom.recom:
             res = Recom.recom.genPiece()
@@ -206,8 +203,7 @@ def getProp(user_id):
             piece.num += res['num']
         else:
             add(BagPiece(user_id, player.id, res['num']))
-        pic = pic_url.format(player.team_id, player.id)
-        return {'name': player.name, 'num': res['num'], "pic": pic, "type": "piece"}
+        return {'name': player.name, 'num': res['num'], "id": player.id, "type": "piece"}
     prop = query(BagProp).get(user_id)
     if ptype == 'fund':
         if prop:
@@ -231,8 +227,7 @@ def toPiece(user_id, player_id):
         piece.num += num
     else:
         add(BagPiece(user_id, player.id, num))
-    pic = pic_url.format(player.team_id, player.id)
-    return {'name': player.name, 'num': num, "pic": pic, "type": "piece"}
+    return {'name': player.name, 'num': num, "id": player.id, "type": "piece"}
 
 
 def getValidPlayer(user_id):
@@ -336,8 +331,8 @@ class ShowPlayer(Resource):
         else:
             res = res.order_by(db.desc(order[abs(index)])).all()
         if index <= 0:
-            return rMessage([{"id": p[0], "name": p[1], "pos1": p[2], "pos2": p[3], "price": p[4],"score": p[5],
-              "pic": pic_url.format(p[6], p[0])} for p in res]).response
+            return rMessage([{"id": p[0], "name": p[1], "pos1": p[2], "pos2": p[3], "price": p[4],
+                              "score": p[5]} for p in res]).response
         else:
             return rMessage([p[0] for p in res]).response
 

@@ -88,7 +88,6 @@ class Recommend:
         time_class = [1, 3, 5]
         prob = [0.85, 0.1, 0.05]
         time = __randomPick__(time_class, prob)
-        print('recom_trial', player_id)
         return {"id": player_id, "time": time}
 
     def __scoreBased__(self, bp, tp):  ##众数法 O(P·ln(P))
@@ -319,7 +318,7 @@ class Recommend:
 
     ####optimize
     def genPiece(self):  ####ok
-        old_players = self.getOldPlayers()
+        old_players = {p[0] for p in self.__buyNum}
         all_players = {p for p in self.__player_score}
         players = list(all_players - old_players)
         if not players:
