@@ -312,7 +312,7 @@ class ShowPlayer(Resource):
         user_id = parser.parse_args()['user_id']
         pos = parser.parse_args()['pos']##filter
         if not index:
-            index = 0
+            index = 1
         if not pos:
             pos = 0
         if index not in range(-3,4) or pos not in range(6):
