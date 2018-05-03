@@ -446,7 +446,6 @@ class Recom(Resource):
             return rMessage("error").response
         if kind == 4:
             if Recom.recom:
-                Recom.recom.__del__()
                 Recom.recom = None
                 print('close recommendation system')
         else:
