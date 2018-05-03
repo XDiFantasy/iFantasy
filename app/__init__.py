@@ -58,9 +58,11 @@ def create_app(config_name):
         return render_template('404.html', base_template=appbuilder.base_template, appbuilder=appbuilder), 404
 
     #db.create_all()
-
+    from app.controller.recruit import Recom,Recommend
+    if not Recom.recom:
+        print('start init recommendation system, waiting ...')
+        Recom.recom = Recommend()
+        print('init successfully')
     
 
     return app
-
-
