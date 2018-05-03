@@ -137,24 +137,28 @@ class TeamMessage(Message):
 class AllPlayerAPi(Resource):
     parser = reqparse.RequestParser()
     parser.add_argument("user_id", type=int)
-    parser.add_argument("pos", type=str)
-    parser.add_argument("order", type=str)
+    parser.add_argument("pos", type=str) # 0-all,1-c,2-pf,3-sf,4-pg,5-sg
+    parser.add_argument("order", type=str) # 1-背包id,2-评分,3-薪资
 
     def get(self):
         args = self.parser.parse_args()
         user_id = args['user_id']
         # print(user_id)
-        if args['order'] is None or args['order'] == '' or args['order'] == 'score':
-            order = 'score'
-        else:
-            order = 'salary'
+        order = args['order']
+        if order is None:
+            order = '1'
 
         pos = args['pos']
+        db_pos_dict = {'0':'all','1':'C','2':'F','3':'F','4':'G','5':'G'}
+        real_pos = db_pos_dict.get(pos,'all') # 默认返回所有球员
+
         # print(type(pos))
         # print(pos)
         # print(order)
         now_time = datetime.datetime.now()
-        if order == 'score':
+        if order == '1':
+            data = BagPlayer.query.filter(BagPlayer.user_id == user_id, BagPlayer.duedate > now_time).all()
+        elif order == '2':
             data = BagPlayer.query.filter(BagPlayer.user_id == user_id, BagPlayer.duedate > now_time).order_by(
                 BagPlayer.score.desc()).all()
         else:
@@ -165,10 +169,10 @@ class AllPlayerAPi(Resource):
         if data is None or len(data) == 0:
             return TeamMessage(error="背包无球员", state=-801).response
         for player in data:
-            if pos is not None and pos != '':
-                db_pos = pos[-1]
+            if real_pos != 'all':
+                # db_pos = pos[-1]
                 # 过滤球员
-                if player.player.pos1 != db_pos and player.player.pos2 != db_pos:
+                if player.player.pos1 != real_pos and player.player.pos2 != real_pos:
                     continue
                 # else:
                 #     tmp_pos = pos
