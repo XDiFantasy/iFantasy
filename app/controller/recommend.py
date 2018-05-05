@@ -1,7 +1,7 @@
 from app import db
 from app.model import PlayerBase, BagPlayer, BagTrailCard, BagPiece, Sim, PlayerStat, SeasonData, Like
 from random import choice, random
-import datetime,threading,time
+import datetime, threading, time, json
 
 query = db.session.query
 add = db.session.add
@@ -34,6 +34,7 @@ class Recommend:
     def __init__(self):
         self.__sims = None  ##dict(dict())
         self.__likes = None  ##dict(dict())
+        self.__team = None
         self.__mode = dict()
         self.__delInvalidPlayer__()
         self.__player_score = dict(query(PlayerBase.id, PlayerBase.score).all());
@@ -49,12 +50,13 @@ class Recommend:
             self.__getMode__(items)
             print('get modes')
 
-        items = query(Like.player_one, Like.player_two, Like.like).all()
+        items = query(Like.player_one, Like.player_two, Like.like, Like.team).all()
         if not items:
             self.genLikes()
             print('system first init likes')
         else:
-            self.__getLike__(items)
+            self.__getLike__([(l[0], l[1], l[2]) for l in items])
+            self.__getTeam__([(l[0], l[1], l[3]) for l in items])
             print('get likes')
 
         player_id = BagPlayer.player_id
@@ -66,6 +68,7 @@ class Recommend:
     def __del__(self):
         self.__threadAlive = False
         self.__thread.join()
+
     ####team will win
 
     def genTrial(self, user_id):
@@ -98,7 +101,7 @@ class Recommend:
         if len(mp) < 1:
             return None
         pm = [(p, self.__mode[p]) for p in self.__mode if p in mp]
-        pm = sorted(pm, key=lambda x: x[1], reverse=True) 
+        pm = sorted(pm, key=lambda x: x[1], reverse=True)
         return [p for (p, r) in pm]
 
     def __itemBased__(self, bps, tp):  ##项目协同 O(P^2)
@@ -118,7 +121,7 @@ class Recommend:
                 rates[p] = 0
             else:
                 rates[p] /= simsum
-        pl = sorted(rates.items(), key=lambda x: x[1], reverse=True) 
+        pl = sorted(rates.items(), key=lambda x: x[1], reverse=True)
         return [p for (p, r) in pl]
 
     def __getLevelPlayer(self, bps):
@@ -149,7 +152,7 @@ class Recommend:
         sims = dict()
         for p1 in rates:
             for p2 in rates:
-                if p1==p2 or ((p1, p2) in sims) or ((p2, p1) in sims):
+                if p1 == p2 or ((p1, p2) in sims) or ((p2, p1) in sims):
                     continue
                 val = self.__cosDict__(rates[p1], rates[p2])
                 if val:
@@ -242,7 +245,7 @@ class Recommend:
         else:
             return self.__popularBased__()
 
-    def __contentBased__(self, user_id,bp):  ##O(P^2)
+    def __contentBased__(self, user_id, bp):  ##O(P^2)
         bag_players = {i[0] for i in bp}
         trial_players = query(BagTrailCard.player_id).filter(BagTrailCard.user_id == user_id).all()
         trial_players = {i[0] for i in trial_players}
@@ -255,9 +258,10 @@ class Recommend:
                 ps = self.__player_score[player]
                 bps = self.__player_score[bp]
                 like = self.__likes[player][bp]
+                team = self.__team[player][bp]
                 if bps > ps and bps < ps + 5 and like > 0.6:
                     like = like * 5
-                score += like
+                score += like + team
             if player in trial_players:
                 score = score * 1.2
             if player in piece_players:
@@ -279,23 +283,34 @@ class Recommend:
         return [p for (p, po) in ppo]
 
     def genLikes(self):  ##ok
+        with open('app/static/teammate.json', 'r') as json_file:
+            records = json.load(json_file)
         s = SeasonData
         players = query(s.player_id, s.gp, s.min, s.reb, s.fg_pct, s.fg3_pct, s.ft_pct, s.pts, s.ast, s.oreb, s.dreb,
                         s.stl, s.blk,
                         s.tov, s.fgm, s.fga, s.fg3m, s.efg_pct, s.ts_pct, s.ortg, s.drtg).all()
         likes = dict()
+        team = dict()
         for p1 in players:
             for p2 in players:
                 if ((p1, p2) in likes) or ((p2, p1) in likes):
                     continue
                 val = self.__cosList__(p1[1:], p2[1:])
                 likes[(p1[0], p2[0])] = val
+                team[(p1[0], p2[0])] = 0
+        for rc in records:
+            if (rc[0], rc[1]) in team:
+                team[(rc[0], rc[1])] = rc[2]
+            if (rc[1], rc[0]) in team:
+                team[(rc[1], rc[0])] = rc[2]
         ####update likes
         query(Like).delete()
-        items = [(item[0], item[1], likes[item]) for item in likes]
-        add_all([Like(item[0], item[1], item[2]) for item in items])
+        add_all([Like(item[0], item[1], likes[item], team[item]) for item in likes])
         if __commit__():
+            items = [(item[0], item[1], likes[item]) for item in likes]
             self.__getLike__(items)
+            items = [(item[0], item[1], team[item]) for item in team]
+            self.__getTeam__(items)
 
     def __getLike__(self, items):
         players = self.__player_score.keys()
@@ -303,6 +318,13 @@ class Recommend:
         for (p1, p2, like) in items:
             self.__likes[p1][p2] = like
             self.__likes[p2][p1] = like
+
+    def __getTeam__(self, items):
+        players = self.__player_score.keys()
+        self.__team = {p1: {p2: 0 for p2 in players} for p1 in players}
+        for (p1, p2, team) in items:
+            self.__team[p1][p2] = team
+            self.__team[p2][p1] = team
 
     def __cosList__(self, v1, v2):  ##O(U) ok
         res1 = res2 = res3 = 0
@@ -322,7 +344,7 @@ class Recommend:
         all_players = {p for p in self.__player_score}
         players = list(all_players - old_players)
         if not players:
-            players = sorted(self.__buyNum, key=lambda x: x[1]) 
+            players = sorted(self.__buyNum, key=lambda x: x[1])
             players = [p for (p, c) in players]
             if len(players) > 10:
                 players = players[:10]
@@ -332,7 +354,6 @@ class Recommend:
         num = __randomPick__(num_class, prob)
         return {"id": player_id, "num": num}
 
-
     def watch(self):
         print('watch run')
         sTime = datetime.datetime.now()
@@ -340,16 +361,16 @@ class Recommend:
         pTime = datetime.datetime.now()
         while self.__threadAlive:
             cTime = datetime.datetime.now()
-            if cTime-sTime >= datetime.timedelta(days=3):
+            if cTime - sTime >= datetime.timedelta(days=3):
                 self.genSim()
                 sTime = cTime
                 print('auto gen sim')
             else:
-                if cTime-mTime >= datetime.timedelta(days=1):
+                if cTime - mTime >= datetime.timedelta(days=1):
                     self.genMode()
                     mTime = cTime
                     print('auto gen mode')
-            if cTime-pTime >= datetime.timedelta(seconds=28800):
+            if cTime - pTime >= datetime.timedelta(seconds=28800):
                 player_id = BagPlayer.player_id
                 self.__buyNum = query(player_id, db.func.count(player_id)).group_by(player_id).all()
                 pTime = cTime
