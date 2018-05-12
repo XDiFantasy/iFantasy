@@ -237,6 +237,20 @@ class Recommend:
             return None
         return res1 / ((res2 * res3) ** 0.5)
 
+    def __pearson__(self, v1, v2):  ##O(U)
+        res1 = res2 = res3 = 0
+        av1 = sum(v1.values()) / len(v1.values())
+        av2 = sum(v2.values()) / len(v2.values())
+        for u in v1:
+            if u in v2:
+                res1 += (v1[u] - av1) * (v2[u] - av2)
+            res2 += (v1[u] - av1) ** 2
+        for u in v2:
+            res3 += (v2[u] - av2) ** 2
+        if res2 * res3 == 0:
+            return None
+        return res1 / ((res2 * res3) ** 0.5)
+
     ####user would like
     def sortRecommend(self, user_id):
         bp = query(BagPlayer.player_id).filter(BagPlayer.user_id == user_id).all()

@@ -130,10 +130,13 @@ def addPlayer(user_id, player):
 
 
 def getPlayer(user_id, level):
+    if level == 0:
+        player_class = [3]
+        prob = [1]
     if level == 1:
         player_class = [0, 1, 2]
         prob = [0.01, 0.09, 0.9]
-    else:
+    if level == 5:
         player_class = [0, 1]
         prob = [0.02, 0.98]
     players = selectPlayer(__randomPick__(player_class, prob))
@@ -173,9 +176,14 @@ def genPiece():
 
 
 def getProp(user_id):
-    prop_type = ['trail', 'piece', 'fund', 'exp']
-    prob = [0.2, 0.6, 0.1, 0.1]
+    prop_type = ['player', 'trail', 'piece', 'fund', 'exp']
+    prob = [0.2, 0.2, 0.4, 0.1, 0.1]
     ptype = __randomPick__(prop_type, prob)
+    if ptype == 'player':
+        res = getPlayer(user_id, 0)
+        if isinstance(res, int):
+            res = toPiece(user_id, res)
+        return res
     if ptype == 'trail':
         if Recom.recom:
             res = Recom.recom.genTrial(user_id)
@@ -308,26 +316,26 @@ class RecruitPlayer(Resource):
 
 class ShowPlayer(Resource):
     def get(self):
-        index = parser.parse_args()['order']##sort
+        index = parser.parse_args()['order']  ##sort
         user_id = parser.parse_args()['user_id']
-        pos = parser.parse_args()['pos']##filter
+        pos = parser.parse_args()['pos']  ##filter
         if not index:
             index = 1
         if not pos:
             pos = 0
-        if index not in range(-3,4) or pos not in range(6):
+        if index not in range(-3, 4) or pos not in range(6):
             return rMessage(error=State.ArgError).response
         order = [PlayerBase.id, PlayerBase.id, PlayerBase.score, PlayerBase.price]
-        poss = ['','c','f','f','g','g']
+        poss = ['', 'c', 'f', 'f', 'g', 'g']
         PB = PlayerBase
-        res = query(PB.id,PB.name,PB.pos1,PB.pos2,PB.price,PB.score,PB.team_id)
+        res = query(PB.id, PB.name, PB.pos1, PB.pos2, PB.price, PB.score, PB.team_id)
         if pos != 0:
             res = res.filter((PB.pos1 == poss[pos]) | (PB.pos2 == poss[pos]))
-        if abs(index)==1 and Recom.recom:
+        if abs(index) == 1 and Recom.recom:
             pl = Recom.recom.sortRecommend(user_id)
             print('recom list')
-            pinfo = {p[0]:p for p in res.all()}##id-tuple
-            res = [pinfo[p] for p in pl if p in pinfo] ##tuple list
+            pinfo = {p[0]: p for p in res.all()}  ##id-tuple
+            res = [pinfo[p] for p in pl if p in pinfo]  ##tuple list
         else:
             res = res.order_by(db.desc(order[abs(index)])).all()
         if index <= 0:
@@ -454,11 +462,11 @@ class Recom(Resource):
                 Recom.recom = Recommend()
                 print('init successfully')
         if kind == 1:
-            Recom.recom.genSim()##every three days,clear table
+            Recom.recom.genSim()  ##every three days,clear table
         if kind == 2:
-            Recom.recom.genLikes()##once,clear table
+            Recom.recom.genLikes()  ##once,clear table
         if kind == 3:
-            Recom.recom.genMode()##every day
+            Recom.recom.genMode()  ##every day
 
         return rMessage("finish").response
 
