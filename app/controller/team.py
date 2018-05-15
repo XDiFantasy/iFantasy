@@ -305,7 +305,7 @@ class CreateLineupApi(Resource):
             player_data['pos'] = player.player.pos1
             player_data['score'] = player.score
             player_data['salary'] = player.salary
-            player_data['image_url'] = get_image_url(player)
+            # player_data['image_url'] = get_image_url(player)
 
             res_player.append(player_data)
 
