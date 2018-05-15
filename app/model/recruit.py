@@ -56,11 +56,13 @@ class Like(db.Model):##static
     player_one = db.Column(db.Integer, db.ForeignKey('player_base.id'), nullable=False)
     player_two = db.Column(db.Integer, db.ForeignKey('player_base.id'), nullable=False)
     like = db.Column(db.FLOAT)
+    team = db.Column(db.FLOAT)
 
-    def __init__(self,player_one,player_two,like):
+    def __init__(self,player_one,player_two,like,team):
         self.player_one=player_one
         self.player_two=player_two
         self.like=like
+        self.team=team
 
     def __repr__(self):
         return "<Like %r, %r>" % (self.player_one,self.player_two)
