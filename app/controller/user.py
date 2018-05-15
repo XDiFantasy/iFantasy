@@ -23,9 +23,12 @@ rollback = db.session.rollback
 
 
 class Auth:
-    header = {'typ': 'JWT', 'alg': 'HS256'}
+    header = {
+        'typ': 'JWT',
+        'alg': 'HS256'
+    }
     payload = {
-        'iss': 'iFantasy-android',
+        'iss': 'iFantasy',
         'exp': None,
         'name': None
     }
@@ -41,8 +44,7 @@ class Auth:
         )
         Auth.payload['exp'], Auth.payload['name'] = None, None
         sha256 = hashlib.sha256()
-        sha256.update(header)
-        sha256.update(payload)
+        sha256.update(header + b'.' + payload)
         sha256.update(base64.urlsafe_b64encode(bytes(Config.SECRET_KEY, encoding="utf-8")))
         temptoken = header + b'.' + payload + b'.' + bytes(sha256.hexdigest(), encoding='utf-8')
         return str(temptoken, encoding='utf-8')
@@ -61,8 +63,7 @@ class Auth:
         )
         Auth.payload['exp'], Auth.payload['name'] = None, None
         sha256 = hashlib.sha256()
-        sha256.update(header)
-        sha256.update(payload)
+        sha256.update(header + b'.' + payload)
         sha256.update(base64.urlsafe_b64encode(bytes(Config.SECRET_KEY, encoding="utf-8")))
         logintoken = header + b'.' + payload + b'.' + bytes(sha256.hexdigest(), encoding='utf-8')
         return str(logintoken, encoding='utf-8')
@@ -81,8 +82,7 @@ class Auth:
         )
         Auth.payload['exp'], Auth.payload['name'] = None, None
         sha256 = hashlib.sha256()
-        sha256.update(header)
-        sha256.update(payload)
+        sha256.update(header + b'.' + payload)
         sha256.update(base64.urlsafe_b64encode(bytes(Config.SECRET_KEY, encoding="utf-8")))
         accesstoken = header + b'.' + payload + b'.' + bytes(sha256.hexdigest(), encoding='utf-8')
         return str(accesstoken, encoding='utf-8')
@@ -205,7 +205,7 @@ class RefreshAccessTokenApi(Resource):
 
         if logintoken:
             user = query(User).get(user_id)
-            if user:
+            if user and Auth.authLoginToken(user, logintoken):
                 user.accesstoken = Auth.generateAccessToken(user)
                 try:
                     commit()
@@ -225,18 +225,22 @@ class LogoutApi(Resource):
     def delete(self):
         args = self.parse.parse_args(strict=True)
         user_id = args['user_id']
-        user = query(User).get(user_id)
-        if not user:
-            return Message(*UserError.ILLEGAL_USER).response
-        user.accesstoken = None
-        try:
-            commit()
-            msg = Message(user.user_full2dict(), None, 200)
-        except Exception as e:
-            rollback()
-            print(e)
-            msg = Message(None, "cannot commit to db", -1)
-        return msg.response
+        logintoken = request.headers.get('Authorization')
+
+        if logintoken:
+            user = query(User).get(user_id)
+            if user and Auth.authLoginToken(user, logintoken):
+                user.logintoken = None
+                user.accesstoken = None
+                try:
+                    commit()
+                    msg = Message(user.user_full2dict(), None, 200)
+                except Exception as e:
+                    rollback()
+                    print(e)
+                    msg = Message(None, "cannot commit to db", -1)
+                return msg.response
+        return Message(*UserError.AUTH_FAILED).response
 
 
 class QueryUserApi(Resource):
