@@ -15,6 +15,17 @@ from .utils import Verify
 
 game_bp = Blueprint('game_bp', __name__, static_folder="../static/game")
 game_api = Api(game_bp)
+with open('./app/controller/prealg/config.ini','r') as f:
+    mlpconfig = json.load(f)
+
+from .prealg import MLP4 as MLP
+from .prealg import OutputData, nd, mx
+mlps = dict()
+for labelname in OutputData.colName():
+    conf = mlpconfig[labelname]
+    mlps[labelname] = MLP(conf['net'],bn=conf['bn'],dropout=conf['dropout'])
+    mlps[labelname].load_params('./app/controller/prealg/params/{}.params'.format(labelname),mx.cpu())
+
 
 
 class GameError:
@@ -56,7 +67,9 @@ class GameResult:
     @property
     def result(self):
         return self.__result
-
+    @staticmethod
+    def colName():
+        return self.__colNames
     def toJson(self):
         return json.dumps(
             {
@@ -84,6 +97,10 @@ class Rank:
         return r if r >= 0 else 0
     def __call__(self,user):
         userMatch = UserMatch.query.filter_by(user_id = user.id).first()
+        if userMatch is None:
+            userMatch = UserMatch(user.id)
+            db.session.add(userMatch)
+            db.session.commit()
         self.scores[user.id] = userMatch.score
         return self.__rank(self.scores[user.id])
     
@@ -123,16 +140,39 @@ class GameInputData:
         for colName in self.__colNames:
             if colName not in not_in:
                 if colName in not_pct:
-                    self.__result[colName] *= 1+ getattr(attr,colName)
+                    self.__result[colName] *= 1+ getattr(attr,colName+'_pct')
                 else:
                     self.__result[colName] += getattr(attr,colName)
+    def result(self):
+        res = []
+        for colName in self.__colNames:
+            res.append(self.__result[colName])
+        return res
     
 
 def net(players1,players2):
     '''
         players : {pos:GameInputData}
     '''
-    return GameResult(), GameResult()
+    pos = ['sf','sg','c','pf','pg']
+    data = [[],[]]
+    for p in pos:
+        data[0] += players1[p].result()[1:]
+        data[1] += players2[p].result()[1:]
+    data = nd.array(data)
+    res1 = dict()
+    res2 = dict()
+    for label in GameResult.colName():
+        if label == 'pts':
+            continue
+        output = mlps[label](data)
+        if label == 'three_pt_pct':
+            output *= 3
+        res1[label] = output[0].asscalar()
+        res2[label] = output[1].asscalar()
+    res1['pts'] = res1['in_pts']+res1['three_pt_pct']+res1['ft']
+        
+    return GameResult(**res1), GameResult(**res2)
 
     
 
@@ -163,11 +203,15 @@ class GameThread(threading.Thread):
         if ostrategy is not None:
             for pos in self.pos:
                 attr = getattr(ostrategy,pos)
+                if attr is None:
+                    continue
                 data = my_input_data[pos]
                 data.updateAttr(attr)
         if dstrategy is not None:
             for pos in self.pos:
                 attr =getattr(dstrategy, pos)
+                if attr is None:
+                    continue
                 data = other_input_data[pos]
                 data.updateAttr(attr)
     def mainGame(self):
@@ -185,6 +229,7 @@ class GameThread(threading.Thread):
         GlobalVar.tasks.put(UpdateScoreTask(matcher2.user,new_score2))
         userGame1 = UserGame(matcher1.user.id, datetime.datetime.today(),**(player1Res.result))
         userGame2 = UserGame(matcher1.user.id, datetime.datetime.today(),**player2Res.result)
+        #print("*************result**********",userGame1.time)
         db.session.add(userGame1)
         db.session.add(userGame2)
         db.session.commit()
@@ -358,8 +403,8 @@ class SendResultTask(Task):
         push.audience = jpush.audience(alias)
         push.message = jpush.message(
             'content',extras = {
-                str(self.user1_id):self.game1Result.toJson(),
-                str(self.user2_id):self.game2Result.toJson()
+                str(self.user1_id):self.game1Result.result,
+                str(self.user2_id):self.game2Result.result
             }
         )
         push.platform = jpush.all_
@@ -413,7 +458,7 @@ class FriendGame(Resource):
             },state=700).data
         sendMessage(message,[str(friend_id)])
         GlobalVar.tasks.put(ModifyLineupTask(user_id,lineup_id))
-        return GameMessage('waiting',state=700)
+        return GameMessage('waiting',state=700).response
     def delete(self):
         args = self.parser.parse_args(strict=True)
         user_id = args['user_id']
