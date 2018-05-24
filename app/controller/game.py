@@ -69,7 +69,7 @@ class GameResult:
         return self.__result
     @staticmethod
     def colName():
-        return self.__colNames
+        return GameResult.__colNames
     def toJson(self):
         return json.dumps(
             {
@@ -160,19 +160,26 @@ def net(players1,players2):
         data[0] += players1[p].result()[1:]
         data[1] += players2[p].result()[1:]
     data = nd.array(data)
-    res1 = dict()
+    #data[0], data[1] = data[0]-data[1], data[1] -data[0] 
+    data = data[0] - data[1]
+    #print(data)
+    res = dict()
     res2 = dict()
     for label in GameResult.colName():
         if label == 'pts':
             continue
         output = mlps[label](data)
-        if label == 'three_pt_pct':
+        output = output.reshape(shape=(1,))
+        #print(output)
+        if label == 'three_pt':
             output *= 3
-        res1[label] = output[0].asscalar()
-        res2[label] = output[1].asscalar()
-    res1['pts'] = res1['in_pts']+res1['three_pt_pct']+res1['ft']
-        
-    return GameResult(**res1), GameResult(**res2)
+        res[label] = float(output.asscalar())
+        res2[label] = -1*res[label]
+        #res2[label] = output[1].asscalar()
+    res['pts'] = res['in_pts']+res['three_pt']+res['ft']
+    res2['pts'] = res2['in_pts']+res2['three_pt']+res2['ft']
+    #print(res1,res2)
+    return GameResult(**res), GameResult(**res2)
 
     
 
@@ -229,7 +236,7 @@ class GameThread(threading.Thread):
         GlobalVar.tasks.put(UpdateScoreTask(matcher2.user,new_score2))
         userGame1 = UserGame(matcher1.user.id, datetime.datetime.today(),**(player1Res.result))
         userGame2 = UserGame(matcher1.user.id, datetime.datetime.today(),**player2Res.result)
-        #print("*************result**********",userGame1.time)
+        print("*************result**********\n",userGame1)
         db.session.add(userGame1)
         db.session.add(userGame2)
         db.session.commit()
