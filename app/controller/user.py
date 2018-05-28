@@ -106,7 +106,7 @@ class UserError:
     AUTH_FAILED = "Authentication Failed", -3
 
 
-class VerificationApi(Resource):
+class VerifyApi(Resource):
     parse = reqparse.RequestParser()
     parse.add_argument('phone', type=str)
     parse.add_argument('code', type=str)
@@ -257,7 +257,7 @@ class QueryUserApi(Resource):
         return Message(*UserError.ILLEGAL_USER).response
 
 
-user_api.add_resource(VerificationApi, '/verification')
+user_api.add_resource(VerifyApi, '/verify')
 user_api.add_resource(RegisterApi, '/register')
 user_api.add_resource(LoginApi, '/login')
 user_api.add_resource(RefreshAccessTokenApi, '/refresh')
