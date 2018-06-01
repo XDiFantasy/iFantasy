@@ -1,111 +1,289 @@
 from flask import Blueprint
-from flask_restful import Api, Resource,reqparse
-from app.model.tactics import OStrategy,AttrCh, DStrategy
+
+from flask_restful import Api, Resource, reqparse
+from app import db
+from app.controller import Message
+from app.model.tactics import OStrategy, AttrCh, DStrategy
+from app.model.team import BagPlayer, LineUp, SeasonData, PlayerBase
 
 tactics_bp = Blueprint("tactics_bp", __name__)
 tactics_api = Api(tactics_bp)
 
-OFFENSE_STRATEGY_OUTSIDE = {
-    'strategy_1' : {'strategy': '外线投射：通过无球掩护为PG、SG、SF提供外线投篮机会，较为克制内线包夹，' \
-                                               '内线联防的防守战术。适合拥有强力外线得分能力的PG、SG、SF的队伍。'},
-    'strategy_2' : {'strategy': '挡拆外切：挡拆人提到上线为持球人做墙，做墙后持球人持球冲击内线带走两个防守人，' \
-                        '并随时准备将球进行传导刚才挡拆者；做墙者来到甜点区准备出手中距离或三分球。此战术适用于有中远距离能力的内线球员。'},
-    'strategy_3' : {'strategy': '突破分球：本方队员篮下得分困难，中远距离投篮又没有机会时，' \
-                                   '进攻队员可以选择突破分球，有目的地将对手挤向篮下，迫使对手缩小防守区域，' \
-                                   '并及时将球传给跟进或绕到无人防守处的接应队员。这种突破分球的战术不是为了篮下得分，' \
-                                   '而是为了给同伴中远距离投篮和空切上篮创造机会。'},
-}
-
-OFFENSE_STRATEGY_INSIDE = {
-    'strategy_4': {'strategy': '内线强攻：清空强侧，给PF，C单打的机会。适合内线能力较强的球队。'},
-    'strategy_5': {'strategy': '双塔战术：适用于同时拥有能力较强的PF、和C的球队，双塔战术利用两个球员强大的内线牵制力，' \
-                                  '对对手内线造成更大的破坏。'},
-    'strategy_6': {'strategy': '掩护内切：挡拆人提到上线为持球人做墙，做墙后持球人持球冲击内线一侧带走两个防守人，' \
-                                  '并随时准备将球进行传导刚才挡拆者；做墙者来到另一侧准备接球上篮。此战术适用于内线终结能力较强的球员。'},
-}
+query = db.session.query
 
 OFFENSE_STRATEGY = {
-    'offense_strategy_1' : {'strategy': '普林斯顿体系：普林斯顿强调中锋调度和人人为我，我为人人的概念，坚持团队篮球和团队精神' \
-                                  '在全队能力值偏低的情况下，提升球队战力。'},
-}
-
-DEFENSE_STRATEGY_OUTSIDE ={
-    'defense_strategy_outside_1' : {'strategy': '外线紧逼：PG、SG、SF提升外防守效率，降低对方外线投射效率，增加对方失误数量。'},
-    'defense_strategy_outside_2' : {'strategy': '外线联防：对方PG、SG、SF有一个或两个为精英外线时，可采用联防，增加被包夹人失误率，' \
-                                    '但同时提高空位球员命中率。'},
-}
-
-DEFENSE_STRATEGY_INSIDE = {
-    'defense_strategy_inside_1' : {'strategy': '内线包夹：对方C、PF能力值较高时，可采用包夹，增加失误率，增加未被包夹球员命中率。'},
+    'strategy_1': {'strategy': '外线投射：通过无球掩护为PG、SG、SF提供外线投篮机会，较为克制内线包夹，' \
+                               '内线联防的防守战术。适合拥有强力外线得分能力的PG、SG、SF的队伍。'},
+    'strategy_2': {'strategy': '挡拆外切：挡拆人提到上线为持球人做墙，做墙后持球人持球冲击内线带走两个防守人，' \
+                               '并随时准备将球进行传导刚才挡拆者；做墙者来到甜点区准备出手中距离或三分球。此战术适用于有中远距离能力的内线球员。'},
+    'strategy_3': {'strategy': '突破分球：本方队员篮下得分困难，中远距离投篮又没有机会时，' \
+                               '进攻队员可以选择突破分球，有目的地将对手挤向篮下，迫使对手缩小防守区域，' \
+                               '并及时将球传给跟进或绕到无人防守处的接应队员。这种突破分球的战术不是为了篮下得分，' \
+                               '而是为了给同伴中远距离投篮和空切上篮创造机会。'},
+    'strategy_4': {'strategy': '内线强攻：清空强侧，给PF，C单打的机会。适合内线能力较强的球队。'},
+    'strategy_5': {'strategy': '双塔战术：适用于同时拥有能力较强的PF、和C的球队，双塔战术利用两个球员强大的内线牵制力，' \
+                               '对对手内线造成更大的破坏。'},
+    'strategy_6': {'strategy': '掩护内切：挡拆人提到上线为持球人做墙，做墙后持球人持球冲击内线一侧带走两个防守人，' \
+                               '并随时准备将球进行传导刚才挡拆者；做墙者来到另一侧准备接球上篮。此战术适用于内线终结能力较强的球员。'},
+    'strategy_7': {'strategy': '普林斯顿体系：普林斯顿强调中锋调度和人人为我，我为人人的概念，坚持团队篮球和团队精神' \
+                               '在全队能力值偏低的情况下，提升球队战力。'},
 }
 
 DEFENSE_STRATEGY = {
-    'defense_strategy_1' : {'strategy': '二三联防：五个球员位置基本固定，每个球员防守覆盖一定区域，二三联防强调团队整体的防守存在感，压迫对手持球，' \
-                                    '增加对手失误。适用于每个人防守能力或几个球员防守一般的球员。'},
+    'strategy_8': {'strategy': '外线紧逼：PG、SG、SF提升外防守效率，降低对方外线投射效率，增加对方失误数量。'},
+    'strategy_9': {'strategy': '外线联防：对方PG、SG、SF有一个或两个为精英外线时，可采用联防，增加被包夹人失误率，' \
+                               '但同时提高空位球员命中率。'},
+    'strategy_10': {'strategy': '内线包夹：对方C、PF能力值较高时，可采用包夹，增加失误率，增加未被包夹球员命中率。'},
+    'strategy_11': {'strategy': '二三联防：五个球员位置基本固定，每个球员防守覆盖一定区域，二三联防强调团队整体的防守存在感，压迫对手持球，' \
+                                '增加对手失误。适用于每个人防守能力或几个球员防守一般的球员。'},
 }
 
-def abort_if_strategy_doesnt_exist(strategy_id):
-    if strategy_id not in OFFENSE_STRATEGY_INSIDE or OFFENSE_STRATEGY_OUTSIDE or OFFENSE_STRATEGY or \
-            DEFENSE_STRATEGY_INSIDE or DEFENSE_STRATEGY_OUTSIDE or DEFENSE_STRATEGY:
 
-        abort(404, message="Strategy {} doesn't exist".format(todo_id))
+# 策略类状态码
+class TacError:
+    No_Arg = 'Request denied', -111
+    No_LineUp = 'You have no such lineup.', -101
+    No_Player = 'You have no such player.', -102
+    No_Data = 'You have no data.', -103
+    No_OIndex = 'You have no such offensive index.', -104
+    No_DIndex = 'You have no such defensive index.', -105
+    No_Recommend = 'Your lineup suits no tactics.', -106
 
 
+# 策略类信息传递
+class TacMessage(Message):
+    def __init__(self, result=None, error='', state=0):
+        super(TacMessage, self).__init__(result, error, state)
+
+
+# 进攻战术介绍
 class Offense_strategy_IndexAPi(Resource):
-    def get(self):
-        return OFFENSE_STRATEGY
+    def get(self, key):
+        if key is None:
+            return TacMessage(None, *TacError.No_OIndex).response
+        return OFFENSE_STRATEGY[key]
 
 
-class Offense_StrategyAPi(Resource):
-    def get(self, strategy_id):
-        data = OStrategy.query.filter_by(id = strategy_id).all()
-        result =[]
-        for random in data:
-            random_data = {}
-            random_data['pg_id'] = random.pg_id
-            random_data['sg_id'] = random.sg_id
-            random_data['sf_id'] = random.sf_id
-            random_data['pf_id'] = random.pf_id
-            random_data['c_id'] = random.c_id
-
-            result.append(random_data)
-
-        return {'data': result}
-
-        # if pg.3pt or sg.3pt or sf.3pt > 35% :
-        #     offense_strategy_outside_1
-        #     if pg.3pt >= 35% :
-        #         pg.3pt += 3%
-        #     if sg.3pt >= 35% :
-        #         sg.3pt += 3%
-        #     if sf.3pt >= 35% :
-        #         sf.3pt += 3%
-
-
-
+# 防守战术介绍
 class Defense_Strategy_IndexAPi(Resource):
+    def get(self, key):
+        if key is None:
+            return TacMessage(None, *TacError.No_DIndex).response
+        return DEFENSE_STRATEGY[key]
+
+
+class Score_APi(Resource):
+    parser = reqparse.RequestParser()
+    parser.add_argument("user_id", type=int)
+
     def get(self):
-        return DEFENSE_STRATEGY
+        args = self.parser.parse_args()
+        user_id = args['user_id']
+        if user_id is None:
+            return TacMessage(None, *TacError.No_Arg).response
+        data = query(LineUp).filter_by(user_id=user_id).first()
+        if data is None:
+            return TacMessage(None, *TacError.No_Player).response
+        pg = data.pg
+        sg = data.sg
+        sf = data.sf
+        pf = data.pf
+        c = data.c
+        pg_data = query(BagPlayer).filter_by(player_id=pg).first()
+        sg_data = query(BagPlayer).filter_by(player_id=sg).first()
+        sf_data = query(BagPlayer).filter_by(player_id=sf).first()
+        pf_data = query(BagPlayer).filter_by(player_id=pf).first()
+        c_data = query(BagPlayer).filter_by(player_id=c).first()
+        return pg_data.score + sg_data.score + sf_data.score + pf_data.score + c_data.score
 
-class Defense_StrategyAPi(Resource):
-    def get(self,strategy_id):
-        data = DStrategy.query.filter_by(id = strategy_id).all()
-        result = []
-        for random in data:
-            random_data = {}
-            random_data['pg_id'] = random.pg_id
-            random_data['sg_id'] = random.sg_id
-            random_data['sf_id'] = random.sf_id
-            random_data['pf_id'] = random.pf_id
-            random_data['c_id'] = random.c_id
 
-            result.append(random_data)
+# 请一个用户ID下来，通过用户ID访问阵容，利用阵容中的球员ID访问球员的SeasonData
+class OStrategy_RecommendAPi(Resource):
+    parser = reqparse.RequestParser()
+    parser.add_argument("user_id", type=int)
 
-        return {'data': result}
+    def get(self):
+        args = self.parser.parse_args()
+        user_id = args['user_id']
+        if user_id is None:
+            return TacMessage(None, *TacError.No_Arg).response
+        data = query(LineUp).filter_by(user_id=user_id).first()
+        if data is None:
+            return TacMessage(None, *TacError.No_Data).response
+        pg = data.pg
+        sg = data.sg
+        sf = data.sf
+        pf = data.pf
+        c = data.c
+        if query(SeasonData).filter_by(player_id=pg).first() is None or query(SeasonData).filter_by(player_id=sg).first() is None \
+                or query(SeasonData).filter_by(player_id=sf).first() is None or query(SeasonData).filter_by(player_id=c).first() \
+                is None or query(SeasonData).filter_by(player_id=c).first() is None:
+            return TacMessage(None, *TacError.No_Data).response
+
+        recommend = {}
+        random1 = query(SeasonData).filter_by(id=pg).first()
+        random2 = query(SeasonData).filter_by(id=sg).first()
+        random3 = query(SeasonData).filter_by(id=sf).first()
+        random4 = query(SeasonData).filter_by(id=pf).first()
+        random5 = query(SeasonData).filter_by(id=c).first()
+
+        # 挡拆外切
+        if random1.fg_3pt > 0.33 or random2.fg_3pt > 0.33:
+            recommend['1st ostrategy'] = 1
+
+        # 外线投射
+        if random1.fg_3pt > 0.33 or random2.fg_3pt > 0.33 or random2.fg_3pt > 0.33:
+            recommend['2nd ostrategy'] = 2
+
+        # 突破分球
+        if (random1.fg_3pt < 0.27 or random2.fg_3pt < 0.27) and (
+                random3.fg_pct < 0.45 or random4.fg_pct < 0.45):
+            recommend['3rd ostrategy'] = 3
+
+        # 内线强攻
+        if random1.fg_pct > 0.5 or random2.fg_pct > 0.52:
+            recommend['4th ostrategy'] = 4
+
+        # 双塔战术
+        if random1.ast > 2 and random2.ast > 2:
+            recommend['5th ostrategy'] = 5
+
+        # 掩护内切
+        if random1.fg_pct > 0.53 or random2.fg_pct > 0.55:
+            recommend['6th ostrategy'] = 6
+
+        # 普林斯顿体系
+        if query(PlayerBase).filter_by(id=pg).first() is None or query(PlayerBase).filter_by(id=sg).first() is None \
+                or query(PlayerBase).filter_by(id=sf).first() is None or query(PlayerBase).filter_by(id=c).first() \
+                is None or query(PlayerBase).filter_by(id=c).first() is None:
+            return TacMessage(None, *TacError.No_Data).response
+        random1 = query(PlayerBase).filter_by(id=pg).first()
+        random2 = query(PlayerBase).filter_by(id=sg).first()
+        random3 = query(PlayerBase).filter_by(id=sf).first()
+        random4 = query(PlayerBase).filter_by(id=pf).first()
+        random5 = query(PlayerBase).filter_by(id=c).first()
+        if random1.score < 15 and random2.score < 15 and random3.score < 15 and random4.score < 15 and \
+                random5.score > 25:
+            recommend['7th ostrategy'] = 7
+
+        # 没有推荐战术
+        if recommend is None:
+            return TacMessage(None, *TacError.No_Recommend).response
+
+        return recommend
 
 
-tactics_api.add_resource(Offense_strategy_IndexAPi,'/off_strategy')
-tactics_api.add_resource(Offense_StrategyAPi,'/off_strategy/<int:strategy_id>')
-tactics_api.add_resource(Defense_Strategy_IndexAPi,'/def_strategy')
-tactics_api.add_resource(Defense_StrategyAPi,'/def_strategy/<int:strategy_id>')
+# 防守战术推荐
+class DStrategy_RecommendAPi(Resource):
+    parser = reqparse.RequestParser()
+    # 请求下来对方user_id
+    parser.add_argument("user_id", type=int)
 
+    def get(self):
+        args = self.parser.parse_args()
+        user_id = args['user_id']
+
+        if user_id is None:
+            return TacMessage(None, *TacError.No_Arg).response
+        data = query(LineUp).filter_by(user_id=user_id).all()
+        if data is None:
+            return TacMessage(None, *TacError.No_Data).response
+        pg = data.pg
+        sg = data.sg
+        sf = data.sf
+        pf = data.pf
+        c = data.c
+
+        if query(SeasonData).filter_by(player_id=pg).first() is None or query(SeasonData).filter_by(
+                player_id=sg).first() is None or query(SeasonData).filter_by(player_id=sf).first() is None \
+                or query(SeasonData).filter_by(player_id=pf).first() is None or \
+                query(SeasonData).filter_by(player_id=c).first() is None:
+            return TacMessage(None, *TacError.No_Data).response
+
+            random1 = query(SeasonData).filter_by(player_id=pg).first()
+            random2 = query(SeasonData).filter_by(player_id=sg).first()
+            random3 = query(SeasonData).filter_by(player_id=sf).first()
+            random4 = query(SeasonData).filter_by(player_id=pf).first()
+            random5 = query(SeasonData).filter_by(player_id=c).first()
+
+            recommend = {}
+
+            # 外线紧逼
+            if random1.fg_3pt > 0.33 and random2.fg_3pt > 0.33 and random3.fg_3pt > 0.33:
+                recommend['1st dstrategy'] = 1
+
+            # 二三联防
+            if random1.ortg > 103.7696 and random2.ortg > 103.7696 and random3.ortg > 103.5955 and random4.ortg > 103.5955 \
+                    and random5.ortg > 103.4155:
+                recommend['2nd dstrategy'] = 2
+
+            if query(PlayerBase).filter_by(player_id=pg).first() is None or query(PlayerBase).filter_by( player_id=sg).first() \
+                    is None or query(PlayerBase).filter_by(player_id=sf).first() is None or query(PlayerBase).filter_by(
+                player_id=pf).first() is None or query(PlayerBase).filter_by(player_id=c).first() is None:
+                return TacMessage(None, *TacError.No_Data).response
+
+                random1 = query(PlayerBase).filter_by(player_id=pg).all()
+                random2 = query(PlayerBase).filter_by(player_id=sg).all()
+                random3 = query(PlayerBase).filter_by(player_id=sf).all()
+                random4 = query(PlayerBase).filter_by(player_id=pf).all()
+                random5 = query(PlayerBase).filter_by(player_id=c).all()
+
+            # 外线包夹
+            if random1.score > 30 or random2.score > 30 or random3.score > 30:
+                recommend['3rd dstrategy'] = 1
+
+            # 内线包夹
+            if random1.score > 30 or random2.score > 30:
+                recommend['4th dstrategy'] = 1
+
+            if recommend is None:
+                return TacMessage(None,*TacError.No_Recommend).response
+
+            return recommend
+
+
+class OffStrategy_InstallAPi(Resource):
+    parser = reqparse.RequestParser()
+    parser.add_argument("offstrategy_id", type=int)
+
+    def get(self):
+        args = self.parser.parse_args()
+        if args is None:
+            return TacMessage(None,*TacError.No_Arg).response
+        offstrategy_id = args['offstrategy_id']
+        data = query(OStrategy).filter_by(id=offstrategy_id).first()
+        if data is None:
+            return TacMessage(None,*TacError.No_Data).response
+        result = data.all()
+        return result
+
+
+class DefStrategy_InstallAPi(Resource):
+    parser = reqparse.RequestParser()
+    parser.add_argument("defstrategy_id", type=int)
+
+    def get(self):
+        args = self.parser.parse_args()
+        if args is None:
+            return TacMessage(None,*TacError.No_Arg).response
+        defstrategy_id = args['defstrategy_id']
+        data = query(DStrategy).filter_by(id=defstrategy_id).first()
+        if data is None:
+            return TacMessage(None,*TacError.No_Data).response
+        result = data.all()
+        return result
+
+
+tactics_api.add_resource(Offense_strategy_IndexAPi, '/off_strategy/<key>')
+
+tactics_api.add_resource(Defense_Strategy_IndexAPi, '/def_strategy/<key>')
+
+tactics_api.add_resource(OStrategy_RecommendAPi, '/ostrategy_recommend')
+
+tactics_api.add_resource(DStrategy_RecommendAPi, '/dstrategy_recommend')
+
+tactics_api.add_resource(Score_APi, '/score')
+
+tactics_api.add_resource(OffStrategy_InstallAPi, '/offstrategy_install')
+
+tactics_api.add_resource(DefStrategy_InstallAPi, '/defstrategy_install')
