@@ -89,11 +89,11 @@ class Score_APi(Resource):
         sf = data.sf
         pf = data.pf
         c = data.c
-        pg_data = query(BagPlayer).filter_by(player_id=pg).first()
-        sg_data = query(BagPlayer).filter_by(player_id=sg).first()
-        sf_data = query(BagPlayer).filter_by(player_id=sf).first()
-        pf_data = query(BagPlayer).filter_by(player_id=pf).first()
-        c_data = query(BagPlayer).filter_by(player_id=c).first()
+        pg_data = query(BagPlayer).filter_by(id=data.pg).first()
+        sg_data = query(BagPlayer).filter_by(id=data.sg).first()
+        sf_data = query(BagPlayer).filter_by(id=data.sf).first()
+        pf_data = query(BagPlayer).filter_by(id=data.pf).first()
+        c_data = query(BagPlayer).filter_by(id=data.c).first()
         return pg_data.score + sg_data.score + sf_data.score + pf_data.score + c_data.score
 
 
@@ -110,33 +110,38 @@ class OStrategy_RecommendAPi(Resource):
         data = query(LineUp).filter_by(user_id=user_id).first()
         if data is None:
             return TacMessage(None, *TacError.No_Data).response
-        pg = data.pg
-        sg = data.sg
-        sf = data.sf
-        pf = data.pf
-        c = data.c
-        if query(SeasonData).filter_by(player_id=pg).first() is None or query(SeasonData).filter_by(player_id=sg).first() is None \
-                or query(SeasonData).filter_by(player_id=sf).first() is None or query(SeasonData).filter_by(player_id=c).first() \
-                is None or query(SeasonData).filter_by(player_id=c).first() is None:
-            return TacMessage(None, *TacError.No_Data).response
+        pg = query(BagPlayer).filter_by(id=data.pg).first()
+        sg = query(BagPlayer).filter_by(id=data.sg).first()
+        sf = query(BagPlayer).filter_by(id=data.sf).first()
+        pf = query(BagPlayer).filter_by(id=data.pf).first()
+        c = query(BagPlayer).filter_by(id=data.c).first()
+        pg_id = pg.player_id
+        sg_id = sg.player_id
+        sf_id = sf.player_id
+        pf_id = pf.player_id
+        c_id = c.player_id
+        if query(SeasonData).filter_by(player_id=pg_id).first() is None or query(SeasonData).filter_by(player_id=sg_id).first() is None \
+                or query(SeasonData).filter_by(player_id=sf_id).first() is None or query(SeasonData).filter_by(player_id=pf_id).first() \
+                is None or query(SeasonData).filter_by(player_id=c_id).first() is None:
+                return TacMessage(None, *TacError.No_Data).response
 
         recommend = {}
-        random1 = query(SeasonData).filter_by(id=pg).first()
-        random2 = query(SeasonData).filter_by(id=sg).first()
-        random3 = query(SeasonData).filter_by(id=sf).first()
-        random4 = query(SeasonData).filter_by(id=pf).first()
-        random5 = query(SeasonData).filter_by(id=c).first()
+        random1 = query(SeasonData).filter_by(player_id=pg_id).first()
+        random2 = query(SeasonData).filter_by(player_id=sg_id).first()
+        random3 = query(SeasonData).filter_by(player_id=sf_id).first()
+        random4 = query(SeasonData).filter_by(player_id=pf_id).first()
+        random5 = query(SeasonData).filter_by(player_id=c_id).first()
 
         # 挡拆外切
-        if random1.fg_3pt > 0.33 or random2.fg_3pt > 0.33:
+        if random1.fg3_pct > 0.33 or random2.fg3_pct > 0.33:
             recommend['1st ostrategy'] = 1
 
         # 外线投射
-        if random1.fg_3pt > 0.33 or random2.fg_3pt > 0.33 or random2.fg_3pt > 0.33:
+        if random1.fg3_pct > 0.33 or random2.fg3_pct > 0.33 or random2.fg3_pct > 0.33:
             recommend['2nd ostrategy'] = 2
 
         # 突破分球
-        if (random1.fg_3pt < 0.27 or random2.fg_3pt < 0.27) and (
+        if (random1.fg3_pct < 0.27 or random2.fg3_pct < 0.27) and (
                 random3.fg_pct < 0.45 or random4.fg_pct < 0.45):
             recommend['3rd ostrategy'] = 3
 
@@ -153,15 +158,15 @@ class OStrategy_RecommendAPi(Resource):
             recommend['6th ostrategy'] = 6
 
         # 普林斯顿体系
-        if query(PlayerBase).filter_by(id=pg).first() is None or query(PlayerBase).filter_by(id=sg).first() is None \
-                or query(PlayerBase).filter_by(id=sf).first() is None or query(PlayerBase).filter_by(id=c).first() \
-                is None or query(PlayerBase).filter_by(id=c).first() is None:
+        if query(PlayerBase).filter_by(id=pg_id).first() is None or query(PlayerBase).filter_by(id=sg_id).first() is None \
+                or query(PlayerBase).filter_by(id=sf_id).first() is None or query(PlayerBase).filter_by(id=pf_id).first() \
+                is None or query(PlayerBase).filter_by(id=c_id).first() is None:
             return TacMessage(None, *TacError.No_Data).response
-        random1 = query(PlayerBase).filter_by(id=pg).first()
-        random2 = query(PlayerBase).filter_by(id=sg).first()
-        random3 = query(PlayerBase).filter_by(id=sf).first()
-        random4 = query(PlayerBase).filter_by(id=pf).first()
-        random5 = query(PlayerBase).filter_by(id=c).first()
+        random1 = query(PlayerBase).filter_by(id=pg_id).first()
+        random2 = query(PlayerBase).filter_by(id=sg_id).first()
+        random3 = query(PlayerBase).filter_by(id=sf_id).first()
+        random4 = query(PlayerBase).filter_by(id=pf_id).first()
+        random5 = query(PlayerBase).filter_by(id=c_id).first()
         if random1.score < 15 and random2.score < 15 and random3.score < 15 and random4.score < 15 and \
                 random5.score > 25:
             recommend['7th ostrategy'] = 7
@@ -185,31 +190,36 @@ class DStrategy_RecommendAPi(Resource):
 
         if user_id is None:
             return TacMessage(None, *TacError.No_Arg).response
-        data = query(LineUp).filter_by(user_id=user_id).all()
+        data = query(LineUp).filter_by(user_id=user_id).first()
         if data is None:
             return TacMessage(None, *TacError.No_Data).response
-        pg = data.pg
-        sg = data.sg
-        sf = data.sf
-        pf = data.pf
-        c = data.c
+        pg = query(BagPlayer).filter_by(id=data.pg).first()
+        sg = query(BagPlayer).filter_by(id=data.sg).first()
+        sf = query(BagPlayer).filter_by(id=data.sf).first()
+        pf = query(BagPlayer).filter_by(id=data.pf).first()
+        c = query(BagPlayer).filter_by(id=data.c).first()
+        pg_id = pg.player_id
+        sg_id = sg.player_id
+        sf_id = sf.player_id
+        pf_id = pf.player_id
+        c_id = c.player_id
 
-        if query(SeasonData).filter_by(player_id=pg).first() is None or query(SeasonData).filter_by(
-                player_id=sg).first() is None or query(SeasonData).filter_by(player_id=sf).first() is None \
-                or query(SeasonData).filter_by(player_id=pf).first() is None or \
-                query(SeasonData).filter_by(player_id=c).first() is None:
+        if query(SeasonData).filter_by(player_id=pg_id).first() is None or query(SeasonData).filter_by(
+                player_id=sg_id).first() is None or query(SeasonData).filter_by(player_id=sf_id).first() is None \
+                or query(SeasonData).filter_by(player_id=pf_id).first() is None or \
+                query(SeasonData).filter_by(player_id=c_id).first() is None:
             return TacMessage(None, *TacError.No_Data).response
 
-            random1 = query(SeasonData).filter_by(player_id=pg).first()
-            random2 = query(SeasonData).filter_by(player_id=sg).first()
-            random3 = query(SeasonData).filter_by(player_id=sf).first()
-            random4 = query(SeasonData).filter_by(player_id=pf).first()
-            random5 = query(SeasonData).filter_by(player_id=c).first()
+            random1 = query(SeasonData).filter_by(player_id=pg_id).first()
+            random2 = query(SeasonData).filter_by(player_id=sg_id).first()
+            random3 = query(SeasonData).filter_by(player_id=sf_id).first()
+            random4 = query(SeasonData).filter_by(player_id=pf_id).first()
+            random5 = query(SeasonData).filter_by(player_id=c_id).first()
 
             recommend = {}
 
             # 外线紧逼
-            if random1.fg_3pt > 0.33 and random2.fg_3pt > 0.33 and random3.fg_3pt > 0.33:
+            if random1.fg3_pct > 0.33 or random2.fg3_pct > 0.33 or random3.fg3_pct > 0.33:
                 recommend['1st dstrategy'] = 1
 
             # 二三联防
@@ -217,27 +227,27 @@ class DStrategy_RecommendAPi(Resource):
                     and random5.ortg > 103.4155:
                 recommend['2nd dstrategy'] = 2
 
-            if query(PlayerBase).filter_by(player_id=pg).first() is None or query(PlayerBase).filter_by( player_id=sg).first() \
-                    is None or query(PlayerBase).filter_by(player_id=sf).first() is None or query(PlayerBase).filter_by(
-                player_id=pf).first() is None or query(PlayerBase).filter_by(player_id=c).first() is None:
+            if query(PlayerBase).filter_by(player_id=pg_id).first() is None or query(PlayerBase).filter_by( player_id=sg_id).first() \
+                    is None or query(PlayerBase).filter_by(player_id=sf_id).first() is None or query(PlayerBase).filter_by(
+                player_id=pf_id).first() is None or query(PlayerBase).filter_by(player_id=c_id).first() is None:
                 return TacMessage(None, *TacError.No_Data).response
 
-                random1 = query(PlayerBase).filter_by(player_id=pg).all()
-                random2 = query(PlayerBase).filter_by(player_id=sg).all()
-                random3 = query(PlayerBase).filter_by(player_id=sf).all()
-                random4 = query(PlayerBase).filter_by(player_id=pf).all()
-                random5 = query(PlayerBase).filter_by(player_id=c).all()
+                random1 = query(PlayerBase).filter_by(player_id=pg_id).first()
+                random2 = query(PlayerBase).filter_by(player_id=sg_id).first()
+                random3 = query(PlayerBase).filter_by(player_id=sf_id).first()
+                random4 = query(PlayerBase).filter_by(player_id=pf_id).first()
+                random5 = query(PlayerBase).filter_by(player_id=c_id).first()
 
             # 外线包夹
-            if random1.score > 30 or random2.score > 30 or random3.score > 30:
-                recommend['3rd dstrategy'] = 1
+            if random1.score > 10 or random2.score > 10 or random3.score > 10:
+                recommend['3rd dstrategy'] = 3
 
             # 内线包夹
             if random1.score > 30 or random2.score > 30:
-                recommend['4th dstrategy'] = 1
+                recommend['4th dstrategy'] = 4
 
             if recommend is None:
-                return TacMessage(None,*TacError.No_Recommend).response
+                return TacMessage(None, *TacError.No_Recommend).response
 
             return recommend
 
@@ -249,12 +259,19 @@ class OffStrategy_InstallAPi(Resource):
     def get(self):
         args = self.parser.parse_args()
         if args is None:
-            return TacMessage(None,*TacError.No_Arg).response
-        offstrategy_id = args['offstrategy_id']
-        data = query(OStrategy).filter_by(id=offstrategy_id).first()
+            return TacMessage(None, *TacError.No_Arg).response
+        off_id = args['offstrategy_id']
+        data = query(OStrategy).filter_by(id=off_id).first()
         if data is None:
-            return TacMessage(None,*TacError.No_Data).response
-        result = data.all()
+            return TacMessage(None, *TacError.No_Data).response
+        result = dict()
+        result['id'] = data.id
+        result['intro'] = data.intro
+        result['pg'] = data.pg
+        result['sg'] = data.sg
+        result['sf'] = data.sf
+        result['pf'] = data.pf
+        result['c'] = data.c
         return result
 
 
@@ -269,8 +286,15 @@ class DefStrategy_InstallAPi(Resource):
         defstrategy_id = args['defstrategy_id']
         data = query(DStrategy).filter_by(id=defstrategy_id).first()
         if data is None:
-            return TacMessage(None,*TacError.No_Data).response
-        result = data.all()
+            return TacMessage(None, *TacError.No_Data).response
+        result = dict()
+        result['id'] = data.id
+        result['intro'] = data.intro
+        result['pg'] = data.pg
+        result['sg'] = data.sg
+        result['sf'] = data.sf
+        result['pf'] = data.pf
+        result['c'] = data.c
         return result
 
 
