@@ -61,7 +61,7 @@ class Offense_strategy_IndexAPi(Resource):
     def get(self, key):
         if key is None:
             return TacMessage(None, *TacError.No_OIndex).response
-        return OFFENSE_STRATEGY[key]
+        return TacMessage(result=OFFENSE_STRATEGY[key], state=0).response
 
 
 # 防守战术介绍
@@ -69,7 +69,7 @@ class Defense_Strategy_IndexAPi(Resource):
     def get(self, key):
         if key is None:
             return TacMessage(None, *TacError.No_DIndex).response
-        return DEFENSE_STRATEGY[key]
+        return TacMessage(result=DEFENSE_STRATEGY[key], state=0).response
 
 
 class Score_APi(Resource):
@@ -94,7 +94,9 @@ class Score_APi(Resource):
         sf_data = query(BagPlayer).filter_by(id=data.sf).first()
         pf_data = query(BagPlayer).filter_by(id=data.pf).first()
         c_data = query(BagPlayer).filter_by(id=data.c).first()
-        return pg_data.score + sg_data.score + sf_data.score + pf_data.score + c_data.score
+        score = pg_data.score + sg_data.score + sf_data.score + pf_data.score + c_data.score
+        return TacMessage(result=score,state=0).response
+    
 
 
 # 请一个用户ID下来，通过用户ID访问阵容，利用阵容中的球员ID访问球员的SeasonData
@@ -175,7 +177,7 @@ class OStrategy_RecommendAPi(Resource):
         if recommend is None:
             return TacMessage(None, *TacError.No_Recommend).response
 
-        return recommend
+        return TacMessage(result=recommend,state=0).response
 
 
 # 防守战术推荐
@@ -249,7 +251,7 @@ class DStrategy_RecommendAPi(Resource):
             if recommend is None:
                 return TacMessage(None, *TacError.No_Recommend).response
 
-            return recommend
+            return TacMessage(result=recommend,state=0).response
 
 
 class OffStrategy_InstallAPi(Resource):
@@ -272,7 +274,7 @@ class OffStrategy_InstallAPi(Resource):
         result['sf'] = data.sf
         result['pf'] = data.pf
         result['c'] = data.c
-        return result
+        return TacMessage(result=result,state=0).response
 
 
 class DefStrategy_InstallAPi(Resource):
@@ -295,7 +297,7 @@ class DefStrategy_InstallAPi(Resource):
         result['sf'] = data.sf
         result['pf'] = data.pf
         result['c'] = data.c
-        return result
+        return TacMessage(result=result,state=0).response
 
 
 tactics_api.add_resource(Offense_strategy_IndexAPi, '/off_strategy/<key>')
