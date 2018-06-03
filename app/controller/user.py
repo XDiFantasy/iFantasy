@@ -179,18 +179,22 @@ class LoginApi(Resource):
         phone = args['phone']
         logintoken = request.headers.get('Authorization')
 
-        if logintoken:
-            user = query(User).filter_by(tel=phone).first()
-            if user and Auth.authLoginToken(user, logintoken):
+        user = query(User).filter_by(tel=phone).first()
+        if user:
+            if not logintoken:
+                user.logintoken = Auth.generateLoginToken(user)
                 user.accesstoken = Auth.generateAccessToken(user)
-                try:
-                    commit()
-                    msg = Message(user.user_full2dict(), None, 200)
-                except Exception as e:
-                    rollback()
-                    print(e)
-                    msg = Message(None, "cannot commit to db", -1)
-                return msg.response
+            else:
+                if Auth.authLoginToken(user, logintoken):
+                    user.accesstoken = Auth.generateAccessToken(user)
+            try:
+                commit()
+                msg = Message(user.user_full2dict(), None, 200)
+            except Exception as e:
+                rollback()
+                print(e)
+                msg = Message(None, "cannot commit to db", -1)
+            return msg.response
         return Message(*UserError.AUTH_FAILED).response
 
 
@@ -230,7 +234,6 @@ class LogoutApi(Resource):
         if logintoken:
             user = query(User).get(user_id)
             if user and Auth.authLoginToken(user, logintoken):
-                user.logintoken = None
                 user.accesstoken = None
                 try:
                     commit()
