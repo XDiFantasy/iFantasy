@@ -122,17 +122,16 @@ class OStrategy_RecommendAPi(Resource):
         sf_id = sf.player_id
         pf_id = pf.player_id
         c_id = c.player_id
-        if query(SeasonData).filter_by(player_id=pg_id).first() is None or query(SeasonData).filter_by(player_id=sg_id).first() is None \
-                or query(SeasonData).filter_by(player_id=sf_id).first() is None or query(SeasonData).filter_by(player_id=pf_id).first() \
-                is None or query(SeasonData).filter_by(player_id=c_id).first() is None:
-                return TacMessage(None, *TacError.No_Data).response
-
         recommend = {}
         random1 = query(SeasonData).filter_by(player_id=pg_id).first()
         random2 = query(SeasonData).filter_by(player_id=sg_id).first()
         random3 = query(SeasonData).filter_by(player_id=sf_id).first()
         random4 = query(SeasonData).filter_by(player_id=pf_id).first()
         random5 = query(SeasonData).filter_by(player_id=c_id).first()
+        if random1 is None or random2 is None or random3 is None or random4 is None or random5 is None:
+                return TacMessage(None, *TacError.No_Data).response
+
+        
 
         # 挡拆外切
         if random1.fg3_pct > 0.33 or random2.fg3_pct > 0.33:
@@ -160,15 +159,14 @@ class OStrategy_RecommendAPi(Resource):
             recommend['6th ostrategy'] = 6
 
         # 普林斯顿体系
-        if query(PlayerBase).filter_by(id=pg_id).first() is None or query(PlayerBase).filter_by(id=sg_id).first() is None \
-                or query(PlayerBase).filter_by(id=sf_id).first() is None or query(PlayerBase).filter_by(id=pf_id).first() \
-                is None or query(PlayerBase).filter_by(id=c_id).first() is None:
-            return TacMessage(None, *TacError.No_Data).response
         random1 = query(PlayerBase).filter_by(id=pg_id).first()
         random2 = query(PlayerBase).filter_by(id=sg_id).first()
         random3 = query(PlayerBase).filter_by(id=sf_id).first()
         random4 = query(PlayerBase).filter_by(id=pf_id).first()
         random5 = query(PlayerBase).filter_by(id=c_id).first()
+        if random1 is None or random2 is None or random3 is None or random4 is None or random5 is None:
+            return TacMessage(None, *TacError.No_Data).response
+        
         if random1.score < 15 and random2.score < 15 and random3.score < 15 and random4.score < 15 and \
                 random5.score > 25:
             recommend['7th ostrategy'] = 7
@@ -205,53 +203,44 @@ class DStrategy_RecommendAPi(Resource):
         sf_id = sf.player_id
         pf_id = pf.player_id
         c_id = c.player_id
-
-        if query(SeasonData).filter_by(player_id=pg_id).first() is None or query(SeasonData).filter_by(
-                player_id=sg_id).first() is None or query(SeasonData).filter_by(player_id=sf_id).first() is None \
-                or query(SeasonData).filter_by(player_id=pf_id).first() is None or \
-                query(SeasonData).filter_by(player_id=c_id).first() is None:
+        random1 = query(SeasonData).filter_by(player_id=pg_id).first()
+        random2 = query(SeasonData).filter_by(player_id=sg_id).first()
+        random3 = query(SeasonData).filter_by(player_id=sf_id).first()
+        random4 = query(SeasonData).filter_by(player_id=pf_id).first()
+        random5 = query(SeasonData).filter_by(player_id=c_id).first()
+        if random1 is None or random2 is None or random3 is None or random4 is None or random5 is None:
             return TacMessage(None, *TacError.No_Data).response
 
-            random1 = query(SeasonData).filter_by(player_id=pg_id).first()
-            random2 = query(SeasonData).filter_by(player_id=sg_id).first()
-            random3 = query(SeasonData).filter_by(player_id=sf_id).first()
-            random4 = query(SeasonData).filter_by(player_id=pf_id).first()
-            random5 = query(SeasonData).filter_by(player_id=c_id).first()
+        recommend = {}
 
-            recommend = {}
+        # 外线紧逼
+          if random1.fg3_pct > 0.33 or random2.fg3_pct > 0.33 or random3.fg3_pct > 0.33:
+              recommend['1st dstrategy'] = 1
 
-            # 外线紧逼
-            if random1.fg3_pct > 0.33 or random2.fg3_pct > 0.33 or random3.fg3_pct > 0.33:
-                recommend['1st dstrategy'] = 1
-
-            # 二三联防
-            if random1.ortg > 103.7696 and random2.ortg > 103.7696 and random3.ortg > 103.5955 and random4.ortg > 103.5955 \
+        # 二三联防
+          if random1.ortg > 103.7696 and random2.ortg > 103.7696 and random3.ortg > 103.5955 and random4.ortg > 103.5955 \
                     and random5.ortg > 103.4155:
-                recommend['2nd dstrategy'] = 2
-
-            if query(PlayerBase).filter_by(player_id=pg_id).first() is None or query(PlayerBase).filter_by( player_id=sg_id).first() \
-                    is None or query(PlayerBase).filter_by(player_id=sf_id).first() is None or query(PlayerBase).filter_by(
-                player_id=pf_id).first() is None or query(PlayerBase).filter_by(player_id=c_id).first() is None:
+             recommend['2nd dstrategy'] = 2
+        random1 = query(PlayerBase).filter_by(player_id=pg_id).first()
+        random2 = query(PlayerBase).filter_by(player_id=sg_id).first()
+        random3 = query(PlayerBase).filter_by(player_id=sf_id).first()
+        random4 = query(PlayerBase).filter_by(player_id=pf_id).first()
+        random5 = query(PlayerBase).filter_by(player_id=c_id).first()
+            if random1 is None or random2 is None or random3 is None or random4 is None or random5 is None:
                 return TacMessage(None, *TacError.No_Data).response
 
-                random1 = query(PlayerBase).filter_by(player_id=pg_id).first()
-                random2 = query(PlayerBase).filter_by(player_id=sg_id).first()
-                random3 = query(PlayerBase).filter_by(player_id=sf_id).first()
-                random4 = query(PlayerBase).filter_by(player_id=pf_id).first()
-                random5 = query(PlayerBase).filter_by(player_id=c_id).first()
+        # 外线包夹
+          if random1.score > 10 or random2.score > 10 or random3.score > 10:
+              recommend['3rd dstrategy'] = 3
 
-            # 外线包夹
-            if random1.score > 10 or random2.score > 10 or random3.score > 10:
-                recommend['3rd dstrategy'] = 3
+        # 内线包夹
+          if random1.score > 30 or random2.score > 30:
+              recommend['4th dstrategy'] = 4
 
-            # 内线包夹
-            if random1.score > 30 or random2.score > 30:
-                recommend['4th dstrategy'] = 4
+          if recommend is None:
+              return TacMessage(None, *TacError.No_Recommend).response
 
-            if recommend is None:
-                return TacMessage(None, *TacError.No_Recommend).response
-
-            return TacMessage(result=recommend,state=0).response
+          return TacMessage(result=recommend,state=0).response
 
 
 class OffStrategy_InstallAPi(Resource):
